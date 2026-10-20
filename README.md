@@ -36,6 +36,7 @@ bash build.sh     # builds Westward and the home screen into device/home/
 | `device/*.sh` | install / update / restore scripts |
 | `home/` | Home screen source. Add or change apps in `home/src/apps.ts` |
 | `home/bt/` | Runs on the Car Thing: `btwake.sh` (wakes the Bluetooth chip at boot) and `bthelper.py` (local API on 127.0.0.1:8737 for pairing) |
+| `racer/` | Apex '82 source: a pseudo-3D arcade racer (`src/main.ts` engine + race, `src/art.ts` procedurally drawn sprites) |
 | `source/` | Westward 1848 TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
 | `link/` | Runs on the Mac: `carthing_link.py` (Spotify Web API + cover-art lookup, served to the Car Thing over USB via `adb reverse`), `install-link.sh` / `uninstall-link.sh` |
 | `build.sh` | Builds both into single, offline HTML files for the device's old Chromium |
@@ -112,6 +113,10 @@ The Music app picks a source automatically:
 - **Spotify (via the Mac link):** `link/install-link.sh` installs a small LaunchAgent on the Mac that talks to the Spotify Web API (PKCE login, no client secret) and keeps `adb reverse tcp:8740` open so the Car Thing can reach it. This adds cover art and real seeking. Needs your own Spotify developer app (Development Mode requires the owner to have Premium) with redirect URI `http://127.0.0.1:8740/callback`.
 
 Controls: turn the dial to scrub, press it to play/pause, 1 previous, 2 shuffle, 3 repeat, 4 next, Back for home.
+
+## Apex '82
+
+An original pseudo-3D arcade racer in a 16-bit style, built for the Car Thing's controls: **dial** steers, **Back** shifts LO/HI (shift too early and the engine bogs, stay in LO and you hit the limiter), **1** brakes, **2** pauses. Gas is automatic by default; press **3** on the title screen for manual gas (hold **4** or the dial). One qualifying lap sets your grid slot, then it's 4 laps against 7 rivals on the Sunset Coast track, with time added each lap.
 
 ## What's next
 

@@ -12,6 +12,11 @@ node build.mjs
 mkdir -p "$ROOT/device/home/apps/westward"
 cp out/index.html "$ROOT/device/home/apps/westward/index.html"
 
+echo "Building Apex '82..."
+cd "$ROOT/racer"
+[ -d node_modules ] || npm install
+node build.mjs
+
 echo "Building home screen..."
 cd "$ROOT/home"
 [ -d node_modules ] || npm install

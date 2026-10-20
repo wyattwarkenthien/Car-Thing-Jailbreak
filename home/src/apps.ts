@@ -25,6 +25,14 @@ export const APPS: AppDef[] = [
     url: 'apps/westward/index.html?from=home',
   },
   {
+    id: 'apex',
+    name: "Apex '82",
+    colors: ['#ff6a3d', '#b3121b'],
+    glyph: `<g ${S}><path d="M5.5 21.5V3"/><path d="M5.5 3.5h13.5l-2.6 4.6 2.6 4.6H5.5"/></g><g fill="#fff"><rect x="5.5" y="3.5" width="3.4" height="3.1"/><rect x="12.3" y="3.5" width="3.4" height="3.1"/><rect x="8.9" y="6.6" width="3.4" height="3.1"/><rect x="15.7" y="6.6" width="1.6" height="3.1"/><rect x="5.5" y="9.7" width="3.4" height="3"/><rect x="12.3" y="9.7" width="3.4" height="3"/></g>`,
+    kind: 'page',
+    url: 'apps/apex/index.html?from=home',
+  },
+  {
     id: 'music',
     name: 'Music',
     colors: ['#ff7a95', '#d1325f'],
