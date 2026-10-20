@@ -65,6 +65,8 @@ let scrubTimer = 0
 let lastTurn = 0
 let toastTimer = 0
 let pending = 0 // ignore polls briefly after a command so the UI doesn't flicker back
+let lastSeen = 0 // when we last had a real track; keep showing it through short gaps (e.g. right after skipping)
+const HOLD_MS = 8000
 let pollTimer = 0
 let tickTimer = 0
 let shownArt = ''
@@ -137,7 +139,12 @@ function choose() {
   if (s && (s.playing || !(b && b.playing))) pick = s
   else if (b) pick = b
   else if (s) pick = s
-  if (!pick) { now = null; paint(); return }
+  if (!pick) {
+    // Between songs the phone briefly reports nothing. Keep the last song up instead of flashing "Nothing playing".
+    if (now && Date.now() - lastSeen < HOLD_MS) return
+    now = null; paint(); return
+  }
+  lastSeen = Date.now()
   const src = pick.source === 'spotify' ? 'spotify' : 'bluetooth'
   now = {
     source: src,
