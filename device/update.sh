@@ -7,5 +7,5 @@ ADB=/Applications/DeskThing.app/Contents/Resources/mac/adb
 "$ADB" shell 'mount -o remount,rw /' &&
   "$ADB" shell "rm -rf $TARGET" &&
   "$ADB" push "$DIR/home" "$TARGET" >/dev/null &&
-  "$ADB" shell 'sync; mount -o remount,ro / ; supervisorctl restart chromium'
+  "$ADB" shell 'sync; mount -o remount,ro / ; supervisorctl restart bthelper 2>/dev/null; supervisorctl restart chromium'
 echo "Updated."

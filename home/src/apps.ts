@@ -47,9 +47,7 @@ export const APPS: AppDef[] = [
     name: 'Phone',
     colors: ['#67d777', '#2c9a43'],
     glyph: `<g ${S}><path d="M21 16.4v2.8a1.9 1.9 0 0 1-2.1 1.9 18.8 18.8 0 0 1-8.2-2.9 18.5 18.5 0 0 1-5.7-5.7A18.8 18.8 0 0 1 2.1 4.3 1.9 1.9 0 0 1 4 2.2h2.8a1.9 1.9 0 0 1 1.9 1.6c.1.9.4 1.8.7 2.7a1.9 1.9 0 0 1-.4 2L7.8 9.7a15.2 15.2 0 0 0 5.7 5.7l1.2-1.2a1.9 1.9 0 0 1 2-.4c.9.3 1.8.6 2.7.7a1.9 1.9 0 0 1 1.6 1.9z"/></g>`,
-    kind: 'panel',
-    status: 'Not built yet',
-    blurb: 'Pair with your phone over Bluetooth. This needs a small Bluetooth helper running on the Car Thing first, which is the next piece to build.',
+    kind: 'panel', // opens Settings > Bluetooth
   },
   {
     id: 'settings',

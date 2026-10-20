@@ -1,5 +1,6 @@
 // Home screen for the Car Thing. Plain DOM, built for the device's old Chromium (no modules, no grid/gap).
 import { APPS, AppDef, PRESETS } from './apps'
+import { BtPrompt, BtStatus, btApi } from './bt'
 
 type Inp = 'left' | 'right' | 'select' | 'back' | 'b1' | 'b2' | 'b3' | 'b4'
 
@@ -64,10 +65,19 @@ function icon(a: AppDef, size: number) {
 
 // ---------------------------------------------------------------- state
 let focus = Math.max(0, Math.min(APPS.length - 1, get<number>('home_focus', 0)))
-let view: 'home' | 'panel' = 'home'
-let panelApp: AppDef | null = null
-let rowFocus = 0
 let leaving = false
+
+// Panels stack: Settings -> Bluetooth -> one device, or an app's placeholder page.
+type PanelKind = 'settings' | 'bluetooth' | 'device' | 'app'
+interface Panel { kind: PanelKind; app?: AppDef; mac?: string; focus: number; title: string }
+let stack: Panel[] = []
+const top = (): Panel | null => (stack.length ? stack[stack.length - 1] : null)
+
+// Bluetooth state from the helper
+let bt: BtStatus | null = null
+let btSeen = false // helper has answered at least once
+let btLastJson = ''
+let prompt: BtPrompt | null = null
 
 // ---------------------------------------------------------------- home
 function buildHome() {
@@ -115,7 +125,7 @@ function paintTrail() {
   }
 }
 
-// ---------------------------------------------------------------- panels
+// ---------------------------------------------------------------- opening things
 function openApp(a: AppDef) {
   if (leaving) return
   if (a.kind === 'page' && a.url) {
@@ -126,58 +136,233 @@ function openApp(a: AppDef) {
     setTimeout(() => { location.href = a.url! }, 260)
     return
   }
-  panelApp = a
-  view = 'panel'
-  rowFocus = 0
+  stack = []
+  if (a.id === 'settings') pushPanel({ kind: 'settings', focus: 0, title: 'Settings' })
+  else if (a.id === 'phone') pushPanel({ kind: 'bluetooth', focus: 0, title: 'Bluetooth' })
+  else pushPanel({ kind: 'app', app: a, focus: 0, title: a.name })
+}
+
+function pushPanel(p: Panel) {
+  stack.push(p)
+  if (p.kind === 'bluetooth' || p.kind === 'device') pollBt()
   buildPanel()
   $('panel').className = 'panel open'
 }
 
-function closePanel() {
-  view = 'home'
-  panelApp = null
-  $('panel').className = 'panel'
-  paintClock()
+function popPanel() {
+  stack.pop()
+  if (!stack.length) { $('panel').className = 'panel'; paintClock(); return }
+  buildPanel()
 }
 
-interface Row { label: string; value: () => string; act?: () => void }
+// ---------------------------------------------------------------- rows
+interface Row { label: string; value?: string; act?: () => void; header?: boolean; note?: boolean; cls?: string }
+
 function settingsRows(): Row[] {
   return [
-    { label: 'Dial direction', value: () => (reverseDial() ? 'Reversed' : 'Normal'), act: () => setReverseDial(!reverseDial()) },
-    { label: 'Clock', value: () => (homeOpts().clock24 ? '24-hour' : '12-hour'), act: () => { const o = homeOpts(); o.clock24 = !o.clock24; set('home_opts', o) } },
-    { label: 'Time zone', value: () => zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
-    { label: 'Reload screen', value: () => '', act: () => location.reload() },
-    { label: 'About', value: () => 'Home 0.1 · Westward 1.0' },
+    { label: 'Bluetooth', value: btSummary() + '  ›', act: () => pushPanel({ kind: 'bluetooth', focus: 0, title: 'Bluetooth' }) },
+    { label: 'Dial direction', value: reverseDial() ? 'Reversed' : 'Normal', act: () => setReverseDial(!reverseDial()) },
+    { label: 'Clock', value: homeOpts().clock24 ? '24-hour' : '12-hour', act: () => { const o = homeOpts(); o.clock24 = !o.clock24; set('home_opts', o) } },
+    { label: 'Time zone', value: zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
+    { label: 'Reload screen', act: () => location.reload() },
+    { label: 'About', value: 'Home 0.2 · Westward 1.0' },
   ]
 }
 
+function btSummary() {
+  if (!bt) return btSeen ? 'Unavailable' : 'Off'
+  if (!bt.controller) return 'Not ready'
+  const c = bt.paired.filter((d) => d.connected)[0]
+  if (c) return c.name
+  return bt.paired.length ? `${bt.paired.length} paired` : 'On'
+}
+
+function bluetoothRows(): Row[] {
+  if (!bt) {
+    return [{ label: btSeen ? 'Lost contact with the Bluetooth helper.' : 'The Bluetooth helper isn\'t running.', note: true },
+      { label: 'Run install-bluetooth.sh from your Mac to set it up.', note: true }]
+  }
+  if (!bt.controller) {
+    return [{ label: 'The Bluetooth chip isn\'t awake yet.', note: true },
+      { label: 'Give it a few seconds after starting up, or restart the Car Thing.', note: true }]
+  }
+  const rows: Row[] = []
+  if (bt.paired.length) {
+    rows.push({ label: 'My devices', header: true })
+    bt.paired.forEach((d) => rows.push({
+      label: d.name, value: (d.connected ? 'Connected' : 'Not connected') + '  ›',
+      act: () => pushPanel({ kind: 'device', mac: d.mac, focus: 0, title: d.name }),
+    }))
+  }
+  rows.push({
+    label: bt.scanning ? 'Stop searching' : 'Search for devices', value: bt.scanning ? 'Searching…' : '', cls: 'action',
+    act: () => btDo('scan?on=' + (bt && bt.scanning ? '0' : '1')),
+  })
+  if (bt.scanning || bt.found.length) {
+    rows.push({ label: 'Nearby', header: true })
+    if (!bt.found.length) rows.push({ label: 'Looking… On your iPhone, open Settings › Bluetooth so it can be found.', note: true })
+    bt.found.forEach((d) => {
+      const pairing = bt!.busy && bt!.busy.action === 'pair' && bt!.busy.mac === d.mac
+      rows.push({ label: d.name, value: pairing ? 'Pairing…' : 'Pair', act: () => btDo('pair?mac=' + d.mac) })
+    })
+  }
+  return rows
+}
+
+function deviceRows(p: Panel): Row[] {
+  const d = bt && bt.paired.filter((x) => x.mac === p.mac)[0]
+  if (!d) return [{ label: 'This device is no longer paired.', note: true }]
+  const busy = bt!.busy && bt!.busy.mac === d.mac
+  return [
+    { label: d.connected ? 'Disconnect' : 'Connect', value: busy ? 'Working…' : '', act: () => btDo((d.connected ? 'disconnect' : 'connect') + '?mac=' + d.mac) },
+    { label: 'Forget this device', cls: 'danger', act: () => { btDo('forget?mac=' + d.mac); popPanel() } },
+    { label: 'Address', value: d.mac },
+  ]
+}
+
+function rowsFor(p: Panel): Row[] {
+  if (p.kind === 'settings') return settingsRows()
+  if (p.kind === 'bluetooth') return bluetoothRows()
+  if (p.kind === 'device') return deviceRows(p)
+  return []
+}
+const focusable = (r: Row) => !r.header && !r.note && !!r.act
+
+function clampFocus(p: Panel, rows: Row[]) {
+  const idx = rows.map((r, i) => (focusable(r) ? i : -1)).filter((i) => i >= 0)
+  if (!idx.length) { p.focus = -1; return }
+  if (idx.indexOf(p.focus) < 0) p.focus = idx[0]
+}
+
+function moveFocus(p: Panel, dir: number) {
+  const rows = rowsFor(p)
+  const idx = rows.map((r, i) => (focusable(r) ? i : -1)).filter((i) => i >= 0)
+  if (!idx.length) return
+  const k = idx.indexOf(p.focus)
+  p.focus = idx[(k + dir + idx.length) % idx.length]
+  buildPanel()
+}
+
+// ---------------------------------------------------------------- panel rendering
 function buildPanel() {
-  const a = panelApp!
-  const head = `<div class="phead"><div class="pback" id="pback">‹ Home</div><div class="pname">${a.name}</div><div class="pspacer"></div></div>`
-  if (a.id === 'settings') {
-    const rows = settingsRows()
-    $('panel').innerHTML = head + `<div class="rows">` + rows.map((r, i) =>
-      `<div class="row${i === rowFocus ? ' focus' : ''}" data-i="${i}"><span>${r.label}</span><span class="rval">${r.value()}</span></div>`).join('') +
-      `</div><div class="phint">Turn the dial to choose · press to change · Back to go home</div>`
-    const els = $('panel').querySelectorAll('.row')
-    for (let i = 0; i < els.length; i++) els[i].addEventListener('click', () => { rowFocus = i; activateRow() })
-  } else {
+  const p = top()
+  if (!p) return
+  const backLabel = stack.length > 1 ? stack[stack.length - 2].title : 'Home'
+  const head = `<div class="phead"><div class="pback" id="pback">‹ ${esc(backLabel)}</div><div class="pname">${esc(p.title)}</div><div class="pspacer"></div></div>`
+  if (p.kind === 'app' && p.app) {
+    const a = p.app
     $('panel').innerHTML = head +
       `<div class="pbody">${icon(a, 128)}<div class="ptext"><div class="pstatus">${a.status || ''}</div><p>${a.blurb || ''}</p></div></div>` +
       `<div class="phint">Press Back to return home</div>`
+  } else {
+    const rows = rowsFor(p)
+    clampFocus(p, rows)
+    let sub = ''
+    if (p.kind === 'bluetooth' && bt && bt.controller) sub = `<div class="psub">Bluetooth is on · this Car Thing shows up as “${esc(bt.name)}”</div>`
+    const msg = (p.kind === 'bluetooth' || p.kind === 'device') && bt && bt.message ? `<div class="ptoast">${esc(bt.message)}</div>` : ''
+    const hint = p.kind === 'settings' ? 'Turn the dial to choose · press to change · Back to go home'
+      : 'Turn the dial to choose · press to select · Back to go back'
+    $('panel').innerHTML = head + sub + `<div class="rows${sub ? ' withsub' : ''}" id="rows">` + rows.map((r, i) => {
+      if (r.header) return `<div class="rhead">${esc(r.label)}</div>`
+      if (r.note) return `<div class="rnote">${esc(r.label)}</div>`
+      return `<div class="row${i === p.focus ? ' focus' : ''}${r.cls ? ' ' + r.cls : ''}" data-i="${i}"><span class="rlabel">${esc(r.label)}</span><span class="rval">${esc(r.value || '')}</span></div>`
+    }).join('') + `</div>` + (msg || `<div class="phint">${hint}</div>`)
+    const els = $('panel').querySelectorAll('.row')
+    for (let i = 0; i < els.length; i++) {
+      els[i].addEventListener('click', function (this: HTMLElement) { p.focus = +(this.getAttribute('data-i') || 0); activateRow() })
+    }
+    // keep the focused row in view
+    const box = document.getElementById('rows')
+    const f = box && (box.querySelector('.row.focus') as HTMLElement | null)
+    if (box && f) {
+      if (f.offsetTop + f.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = f.offsetTop + f.offsetHeight - box.clientHeight
+      if (f.offsetTop < box.scrollTop) box.scrollTop = Math.max(0, f.offsetTop - 34)
+    }
   }
-  $('pback').addEventListener('click', closePanel)
+  $('pback').addEventListener('click', popPanel)
 }
 
 function activateRow() {
-  const r = settingsRows()[rowFocus]
-  if (r && r.act) { r.act(); buildPanel() }
+  const p = top()
+  if (!p) return
+  const r = rowsFor(p)[p.focus]
+  if (r && r.act) { r.act(); if (top() === p) buildPanel() }
 }
+
+function esc(s: string) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// ---------------------------------------------------------------- bluetooth polling + pairing prompt
+function btDo(path: string) {
+  btApi(path, () => setTimeout(pollBt, 300))
+  setTimeout(pollBt, 1200)
+}
+
+function pollBt() {
+  btApi('status', (r) => {
+    if (r && r.ok) { bt = r; btSeen = true } else bt = null
+    const j = JSON.stringify(bt)
+    const changed = j !== btLastJson
+    btLastJson = j
+    const np = bt ? bt.prompt : null
+    if (JSON.stringify(np) !== JSON.stringify(prompt)) { prompt = np; paintPrompt() }
+    const p = top()
+    if (changed && p && p.kind !== 'app') buildPanel()
+  })
+}
+
+function paintPrompt() {
+  const el = $('prompt')
+  if (!prompt) { el.className = 'prompt'; return }
+  const who = esc(prompt.name || 'a device')
+  let body = ''
+  if (prompt.kind === 'confirm') {
+    body = `<div class="qtitle">Pair with ${who}?</div><div class="qcode">${esc(spaced(prompt.passkey || ''))}</div>` +
+      `<div class="qtext">Check that your phone shows the same code, then accept on both.</div>` +
+      `<div class="qkeys"><span>Back · Cancel</span><span class="qyes">Press dial · Pair</span></div>`
+  } else if (prompt.kind === 'authorize') {
+    body = `<div class="qtitle">${who} wants to pair</div><div class="qtext">Allow it to pair with this Car Thing?</div>` +
+      `<div class="qkeys"><span>Back · Don't allow</span><span class="qyes">Press dial · Allow</span></div>`
+  } else if (prompt.kind === 'display') {
+    body = `<div class="qtitle">Enter this code on ${who}</div><div class="qcode">${esc(spaced(prompt.passkey || ''))}</div>` +
+      `<div class="qkeys"><span></span><span class="qyes">Press dial · OK</span></div>`
+  } else {
+    body = `<div class="qtitle">Pairing with ${who}</div><div class="qtext">If your device asks for a PIN, enter 0000.</div>` +
+      `<div class="qkeys"><span></span><span class="qyes">Press dial · OK</span></div>`
+  }
+  el.innerHTML = `<div class="qcard">${body}</div>`
+  el.className = 'prompt open'
+}
+const spaced = (s: string) => (s.length === 6 ? s.slice(0, 3) + ' ' + s.slice(3) : s)
+
+function answerPrompt(yes: boolean) {
+  const k = prompt && prompt.kind
+  prompt = null
+  paintPrompt()
+  if (k === 'pin') return
+  btDo('answer?yes=' + (yes ? '1' : '0'))
+}
+
+let tick = 0
+setInterval(() => {
+  tick++
+  const p = top()
+  const active = !!p && (p.kind === 'bluetooth' || p.kind === 'device' || p.kind === 'settings')
+  // fast while a Bluetooth page or a prompt is open, slow otherwise (just to catch incoming pairing requests)
+  if (active || prompt || tick % 4 === 0) pollBt()
+}, 1500)
 
 // ---------------------------------------------------------------- input
 function input(e: Inp) {
   if (leaving) return
-  if (view === 'home') {
+  if (prompt) {
+    if (e === 'select') answerPrompt(true)
+    else if (e === 'back') answerPrompt(false)
+    return
+  }
+  const p = top()
+  if (!p) {
     if (e === 'left' || e === 'right') { focus = (focus + (e === 'right' ? 1 : -1) + APPS.length) % APPS.length; paintFocus() }
     else if (e === 'select') openApp(APPS[focus])
     else if (e === 'b1' || e === 'b2' || e === 'b3' || e === 'b4') {
@@ -187,13 +372,10 @@ function input(e: Inp) {
     }
     return
   }
-  // panel
-  if (e === 'back') { closePanel(); return }
-  if (panelApp && panelApp.id === 'settings') {
-    const n = settingsRows().length
-    if (e === 'left' || e === 'right') { rowFocus = (rowFocus + (e === 'right' ? 1 : -1) + n) % n; buildPanel() }
-    else if (e === 'select') activateRow()
-  }
+  if (e === 'back') { popPanel(); return }
+  if (p.kind === 'app') return
+  if (e === 'left' || e === 'right') moveFocus(p, e === 'right' ? 1 : -1)
+  else if (e === 'select') activateRow()
 }
 
 const KEYMAP: { [k: string]: Inp } = {
@@ -238,7 +420,8 @@ window.addEventListener('pageshow', () => { leaving = false; document.body.class
 fit()
 buildHome()
 paintClock()
-setInterval(() => { if (view === 'home') paintClock() }, 1000)
+setInterval(() => { if (!stack.length) paintClock() }, 1000)
+pollBt()
 
 // test hook
-;(window as unknown as { __home: unknown }).__home = { input, state: () => ({ focus, view, panel: panelApp && panelApp.id, rowFocus }) }
+;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }

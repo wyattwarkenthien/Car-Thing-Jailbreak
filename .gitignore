@@ -4,3 +4,4 @@ source/dist/
 device/backup/
 *.zip
 .DS_Store
+__pycache__/

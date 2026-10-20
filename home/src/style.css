@@ -68,7 +68,15 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .pstatus { display: inline-block; padding: 5px 12px; border-radius: 99px; font-size: 14px; font-weight: 700; color: #ffd28a; background: rgba(255,190,90,0.15); }
 .ptext p { margin: 14px 0 0; font-size: 20px; line-height: 1.45; color: rgba(255,255,255,0.85); }
 .phint { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font-size: 15px; color: rgba(255,255,255,0.5); }
-.rows { margin: 26px auto 0; width: 600px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,0.07); }
+.rows { position: relative; margin: 22px auto 0; width: 620px; max-height: 330px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,0.07); }
+.rows.withsub { margin-top: 10px; max-height: 300px; }
+.psub { margin: 6px auto 0; width: 620px; font-size: 15px; color: rgba(255,255,255,0.6); text-align: center; }
+.rhead { padding: 14px 24px 6px; font-size: 13px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+.rnote { padding: 14px 24px; font-size: 18px; line-height: 1.4; color: rgba(255,255,255,0.72); }
+.rlabel { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 380px; }
+.row.action .rlabel { color: #8fb4ff; }
+.row.danger .rlabel { color: #ff8a8a; }
+.ptoast { position: absolute; left: 50%; bottom: 18px; -webkit-transform: translateX(-50%); transform: translateX(-50%); max-width: 640px; padding: 9px 18px; border-radius: 99px; font-size: 16px; background: rgba(143,180,255,0.18); color: #dfe8ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row {
   display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: center; align-items: center;
   height: 64px; padding: 0 24px; font-size: 21px; border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -76,3 +84,13 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .row:last-child { border-bottom: 0; }
 .row.focus { background: rgba(143,180,255,0.22); box-shadow: inset 4px 0 0 #8fb4ff; }
 .rval { color: rgba(255,255,255,0.6); }
+
+/* pairing prompt, shown over everything */
+.prompt { position: absolute; left: 0; top: 0; width: 800px; height: 480px; display: none; background: rgba(6,8,20,0.72); }
+.prompt.open { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.qcard { width: 560px; box-sizing: border-box; padding: 30px 36px 24px; border-radius: 26px; text-align: center; background: linear-gradient(170deg, #26305a, #1b1f3a); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+.qtitle { font-size: 26px; font-weight: 700; }
+.qcode { margin: 18px 0 6px; font-size: 64px; font-weight: 700; letter-spacing: 6px; color: #fff; }
+.qtext { margin-top: 12px; font-size: 18px; line-height: 1.4; color: rgba(255,255,255,0.75); }
+.qkeys { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; margin-top: 26px; font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.55); }
+.qyes { color: #8fb4ff; }

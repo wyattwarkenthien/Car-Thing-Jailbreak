@@ -5,7 +5,7 @@ Spotify discontinued the Car Thing at the end of 2024 and shut off its servers, 
 
 ## Quick start
 
-The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Music, Radio and Phone are placeholders for now.
+The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Phone (and Settings › Bluetooth) scans for and pairs with phones, showing the pairing code on screen to confirm. Music and Radio are placeholders for now.
 
 **Try it on your computer:** open [`device/home/index.html`](device/home/index.html) in Chrome. Arrow keys = dial, Enter = press dial, Esc = back, 1–4 = preset buttons.
 
@@ -17,6 +17,7 @@ bash install.sh   # backs up the original start page (first run only), installs,
 bash update.sh    # push a new build of home/
 bash restore.sh   # put the original start page back
 bash sync-time.sh # set the Car Thing's clock and time zone from the Mac
+bash install-bluetooth.sh  # wake the Bluetooth chip at boot + start the pairing helper
 ```
 
 Plug the Car Thing in normally (no buttons held) and let it boot first. If DeskThing is running, quit it and kill any leftover `adb` process, or the USB connection will be busy. `install.sh` saves a backup in `device/backup/`, which is git-ignored.
@@ -34,6 +35,7 @@ bash build.sh     # builds Westward and the home screen into device/home/
 | `device/home/` | What goes on the Car Thing: the home screen (`index.html`) and apps (`apps/westward/index.html`) |
 | `device/*.sh` | install / update / restore scripts |
 | `home/` | Home screen source. Add or change apps in `home/src/apps.ts` |
+| `home/bt/` | Runs on the Car Thing: `btwake.sh` (wakes the Bluetooth chip at boot) and `bthelper.py` (local API on 127.0.0.1:8737 for pairing) |
 | `source/` | Westward 1848 TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
 | `build.sh` | Builds both into single, offline HTML files for the device's old Chromium |
 
@@ -96,6 +98,10 @@ Three small shell scripts handle installing over USB with `adb`:
 - **restore.sh** puts the original startup config back.
 
 Everything is reversible, and the game runs entirely on the Car Thing. It only needs USB power, so a phone charger works.
+
+## Bluetooth
+
+After the jailbreak the Car Thing's Broadcom BCM20703A2 never answers at boot: the system attaches to it over `/dev/ttyS1` without resetting it first, so every command times out. Power-cycling `gpio493` before attaching brings it up. `install-bluetooth.sh` adds that as a startup service, plus a small Python helper that drives `bluetoothctl` as the pairing agent for the Settings › Bluetooth page.
 
 ## What's next
 

@@ -1,7 +1,7 @@
 // Builds the home screen into one self-contained HTML file (fonts, CSS and JS inlined).
 // Output: ../device/home/index.html
 import { build } from 'esbuild'
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, cpSync } from 'fs'
 import { createRequire } from 'module'
 
 const require = createRequire(import.meta.url)
@@ -14,4 +14,5 @@ const html = readFileSync('index.html', 'utf8').replace('/*CSS*/', () => css).re
 
 mkdirSync('../device/home', { recursive: true })
 writeFileSync('../device/home/index.html', html)
+cpSync('bt', '../device/home/bt', { recursive: true, filter: (src) => !src.includes('__pycache__') })
 console.log('device/home/index.html', (html.length / 1024).toFixed(1) + ' KB')
