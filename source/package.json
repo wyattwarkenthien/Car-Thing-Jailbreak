@@ -1,0 +1,25 @@
+{
+  "name": "westward",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npx @deskthing/cli package",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:standalone": "node build.mjs"
+  },
+  "dependencies": {
+    "@deskthing/client": "^0.11.1",
+    "@deskthing/server": "^0.11.2"
+  },
+  "devDependencies": {
+    "@deskthing/cli": "^0.11.15",
+    "@deskthing/types": "^0.11.11",
+    "@types/node": "^22.10.7",
+    "esbuild": "^0.25.1",
+    "typescript": "^5.5.3",
+    "vite": "^6.2.2",
+    "@fontsource/vt323": "^5.0.0"
+  }
+}

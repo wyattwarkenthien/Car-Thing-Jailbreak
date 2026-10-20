@@ -1,0 +1,6 @@
+node_modules/
+source/out/
+source/dist/
+device/backup/
+*.zip
+.DS_Store
