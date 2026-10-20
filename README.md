@@ -118,6 +118,10 @@ Controls: turn the dial to scrub, press it to play/pause, 1 previous, 2 shuffle,
 
 An original pseudo-3D arcade racer in a 16-bit style, built for the Car Thing's controls: **dial** steers, **Back** shifts LO/HI (shift too early and the engine bogs, stay in LO and you hit the limiter), **1** brakes, **2** pauses. Gas is automatic by default; press **3** on the title screen for manual gas (hold **4** or the dial). One qualifying lap sets your grid slot, then it's 4 laps against 7 rivals on the Sunset Coast track, with time added each lap.
 
+## Phone
+
+A "stream deck" of favourite contacts. Pick one (dial, or presets 1-4), press once to confirm and again to call. The Car Thing briefly acts as a hands-free unit: it finds the iPhone's Handsfree Audio Gateway RFCOMM channel with `sdptool`, does the HFP handshake (`AT+BRSF`, `AT+CIND`, `AT+CMER`), sends `ATD<number>;`, waits for the phone to report the outgoing call, then disconnects so the call stays on the phone (the Car Thing has no speaker). Only numbers in `device/home/favorites.json` can be dialled; that file is git-ignored, see `device/favorites.example.json`.
+
 ## What's next
 
 The same trick (replace the boot page) made room for a home screen, so the Car Thing now boots to an app grid with Westward as one app. Next up: filling in the Music (now-playing for the Mac), Radio (a companion screen for my Baofeng UV-5R) and Phone (Bluetooth pairing) apps.

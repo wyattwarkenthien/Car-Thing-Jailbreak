@@ -2,6 +2,7 @@
 import { APPS, AppDef, PRESETS } from './apps'
 import { BtPrompt, BtStatus, btApi } from './bt'
 import { input as musicInput, musicOpen, openMusic } from './music'
+import { input as phoneInput, openPhone, phoneOpen } from './phone'
 
 type Inp = 'left' | 'right' | 'select' | 'back' | 'b1' | 'b2' | 'b3' | 'b4'
 
@@ -139,8 +140,8 @@ function openApp(a: AppDef) {
   }
   stack = []
   if (a.id === 'music') { openMusic(() => paintClock()); return }
+  if (a.id === 'phone') { openPhone(() => paintClock()); return }
   if (a.id === 'settings') pushPanel({ kind: 'settings', focus: 0, title: 'Settings' })
-  else if (a.id === 'phone') pushPanel({ kind: 'bluetooth', focus: 0, title: 'Bluetooth' })
   else pushPanel({ kind: 'app', app: a, focus: 0, title: a.name })
 }
 
@@ -167,7 +168,7 @@ function settingsRows(): Row[] {
     { label: 'Clock', value: homeOpts().clock24 ? '24-hour' : '12-hour', act: () => { const o = homeOpts(); o.clock24 = !o.clock24; set('home_opts', o) } },
     { label: 'Time zone', value: zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
     { label: 'Reload screen', act: () => location.reload() },
-    { label: 'About', value: 'Home 0.3 · Westward 1.0' },
+    { label: 'About', value: 'Home 0.4 · Westward 1.0' },
   ]
 }
 
@@ -364,6 +365,7 @@ function input(e: Inp) {
     return
   }
   if (musicOpen()) { musicInput(e); return }
+  if (phoneOpen()) { phoneInput(e); return }
   const p = top()
   if (!p) {
     if (e === 'left' || e === 'right') { focus = (focus + (e === 'right' ? 1 : -1) + APPS.length) % APPS.length; paintFocus() }
@@ -423,8 +425,8 @@ window.addEventListener('pageshow', () => { leaving = false; document.body.class
 fit()
 buildHome()
 paintClock()
-setInterval(() => { if (!stack.length && !musicOpen()) paintClock() }, 1000)
+setInterval(() => { if (!stack.length && !musicOpen() && !phoneOpen()) paintClock() }, 1000)
 pollBt()
 
 // test hook
-;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: musicOpen() ? 'music' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }
+;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: musicOpen() ? 'music' : phoneOpen() ? 'phone' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }

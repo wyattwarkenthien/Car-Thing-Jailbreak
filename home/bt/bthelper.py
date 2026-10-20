@@ -13,6 +13,9 @@ as the pairing agent, and serves a tiny JSON API on 127.0.0.1 for the home scree
   /api/answer?yes=1|0         answer a pairing prompt (passkey confirmation etc.)
   /api/media                  what's playing on the connected phone (AVRCP)
   /api/media/cmd?c=play|pause|toggle|next|prev|shuffle|repeat
+  /api/favorites              the favourite contacts (names only) from favorites.json
+  /api/call?i=N               call favourite N on the phone (hands-free dialing)
+  /api/callstatus             idle | connecting | dialing | calling | error
 
 Only listens on localhost. Standard library only (the device has no python dbus module).
 """
@@ -29,6 +32,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from media import Media  # noqa: E402
+from calls import Caller, load_favorites  # noqa: E402
 
 PORT = int(os.environ.get("BTHELPER_PORT", "8737"))
 BTCTL = os.environ.get("BTCTL", "bluetoothctl")
@@ -341,6 +345,7 @@ class Bt:
 
 BT = None
 MEDIA = None
+CALLER = None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -353,6 +358,15 @@ class Handler(BaseHTTPRequestHandler):
             body = MEDIA.state()
         elif u.path == "/api/media/cmd":
             body = MEDIA.cmd((q.get("c") or [""])[0])
+        elif u.path == "/api/favorites":
+            body = {"ok": True, "favorites": [{"name": f["name"]} for f in load_favorites()]}
+        elif u.path == "/api/call":
+            try:
+                body = CALLER.call(int((q.get("i") or ["-1"])[0]))
+            except ValueError:
+                body = {"ok": False, "error": "bad index"}
+        elif u.path == "/api/callstatus":
+            body = dict(CALLER.status(), ok=True)
         elif u.path.startswith("/api/"):
             body = BT.act(u.path[5:], q)
         else:
@@ -378,9 +392,10 @@ class Server(ThreadingMixIn, HTTPServer):
 
 
 def main():
-    global BT, MEDIA
+    global BT, MEDIA, CALLER
     BT = Bt()
     MEDIA = Media(log)
+    CALLER = Caller(log)
     log("bthelper listening on 127.0.0.1:%d" % PORT)
     Server(("127.0.0.1", PORT), Handler).serve_forever()
 

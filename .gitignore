@@ -6,3 +6,4 @@ device/backup/
 .DS_Store
 __pycache__/
 racer/node_modules/
+device/home/favorites.json
