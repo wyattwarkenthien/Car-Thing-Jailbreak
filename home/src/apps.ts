@@ -44,9 +44,7 @@ export const APPS: AppDef[] = [
     name: 'Radio',
     colors: ['#52d8b4', '#11806a'],
     glyph: `<g ${S}><circle cx="12" cy="10" r="1.6"/><path d="M12 11.6V21M8.5 21h7"/><path d="M8.2 6.6a5 5 0 0 0 0 6.8M15.8 6.6a5 5 0 0 1 0 6.8"/><path d="M5.4 3.9a9 9 0 0 0 0 12.2M18.6 3.9a9 9 0 0 1 0 12.2"/></g>`,
-    kind: 'panel',
-    status: 'Not built yet',
-    blurb: 'A companion screen for your UV-5R: a guide to local repeaters, weather and saved channels you browse with the dial, with live activity from an SDR on the Mac later on.',
+    kind: 'panel', // scrollable UV-5R guide (src/radio.ts, data from tools/UV-5R_Fargo_Guide.xlsx)
   },
   {
     id: 'phone',

@@ -163,3 +163,39 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .fstatus.err .fsicon { background: #ff453a; }
 .fstitle { margin-top: 22px; font-size: 32px; font-weight: 700; }
 .fstext { margin-top: 10px; font-size: 19px; color: rgba(255,255,255,0.72); }
+
+/* ---------------- Radio: UV-5R guide ---------------- */
+.radio { position: absolute; left: 0; top: 0; width: 800px; height: 480px; overflow: hidden; display: none; background: linear-gradient(170deg, #0f1f22 0%, #141a2e 100%); }
+.radio.open { display: block; }
+.rtabs { position: absolute; left: 0; top: 0; width: 800px; height: 44px; display: -webkit-flex; display: flex; }
+.rtabs div { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
+  font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.55); border-bottom: 3px solid transparent; }
+.rtabs div.on { color: #fff; border-bottom-color: #4dd4ac; }
+.rtabs div.on .pnum { background: #4dd4ac; }
+.rkey { position: absolute; right: 24px; top: 52px; font-size: 13px; color: rgba(255,255,255,0.6); }
+.rkey i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 6px 0 14px; vertical-align: -1px; }
+.rkey i.rx { background: #34c759; } .rkey i.ham { background: #ff9f0a; } .rkey i.plain { background: rgba(255,255,255,0.35); }
+.rlist { position: absolute; left: 24px; right: 24px; top: 74px; bottom: 36px; overflow: hidden; }
+.rhead2 { padding: 12px 6px 6px; font-size: 13px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #4dd4ac; }
+.rrow { margin: 3px 0; border-radius: 12px; background: rgba(255,255,255,0.05); border-left: 5px solid rgba(255,255,255,0.15); }
+.rrow.rx { border-left-color: #34c759; } .rrow.ham { border-left-color: #ff9f0a; } .rrow.none { border-left-color: #7d828c; } .rrow.warn { border-left-color: #ff453a; }
+.rrow.plain { border-left-color: rgba(255,255,255,0.25); }
+.rrow.note { border-left-color: transparent; background: none; }
+.rrow.note .rmain { font-size: 16px; line-height: 1.4; color: rgba(255,255,255,0.72); padding: 6px 12px; height: auto; white-space: normal; }
+.rrow.focus { background: rgba(255,255,255,0.15); box-shadow: 0 0 0 2px #fff; }
+.rrow.note.focus { background: rgba(255,255,255,0.08); }
+.rmain { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; min-height: 48px; padding: 0 14px; font-size: 19px; }
+.rch { width: 40px; -webkit-flex-shrink: 0; flex-shrink: 0; font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.5); }
+.rname { -webkit-flex: 1; flex: 1; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rfreq { width: 170px; text-align: right; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rset { max-width: 360px; text-align: right; font-size: 16px; color: rgba(255,255,255,0.8); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rtag { width: 150px; text-align: right; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.55); }
+.rrow.ham .rtag { color: #ffb44d; } .rrow.rx .rtag { color: #7fe39a; }
+.rmore { width: 22px; text-align: right; color: rgba(255,255,255,0.5); }
+.rdetail { padding: 2px 16px 14px 54px; font-size: 16px; color: rgba(255,255,255,0.85); }
+.rdetail p { margin: 8px 0 0; line-height: 1.4; }
+.rkv { display: -webkit-flex; display: flex; padding: 3px 0; }
+.rkv span { width: 190px; color: rgba(255,255,255,0.55); }
+.rkv b { -webkit-flex: 1; flex: 1; font-weight: 600; }
+.rsrc { margin-top: 6px; font-size: 13px; color: rgba(255,255,255,0.45); }
+.rhint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 13px; color: rgba(255,255,255,0.4); }

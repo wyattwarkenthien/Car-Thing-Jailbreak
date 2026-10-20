@@ -3,6 +3,7 @@ import { APPS, AppDef, PRESETS } from './apps'
 import { BtPrompt, BtStatus, btApi } from './bt'
 import { input as musicInput, musicOpen, openMusic } from './music'
 import { input as phoneInput, openPhone, phoneOpen } from './phone'
+import { input as radioInput, openRadio, radioOpen } from './radio'
 import { installSleep, lastKey } from '../../shared/sleep'
 
 // 5th button on top = screen sleep (must be installed before the other key listeners)
@@ -145,6 +146,7 @@ function openApp(a: AppDef) {
   stack = []
   if (a.id === 'music') { openMusic(() => paintClock()); return }
   if (a.id === 'phone') { openPhone(() => paintClock()); return }
+  if (a.id === 'radio') { openRadio(() => paintClock()); return }
   if (a.id === 'settings') pushPanel({ kind: 'settings', focus: 0, title: 'Settings' })
   else pushPanel({ kind: 'app', app: a, focus: 0, title: a.name })
 }
@@ -173,7 +175,7 @@ function settingsRows(): Row[] {
     { label: 'Time zone', value: zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
     { label: 'Button test', value: lastKey ? 'Last: ' + lastKey : 'Press any button' },
     { label: 'Reload screen', act: () => location.reload() },
-    { label: 'About', value: 'Home 0.5 · Westward 1.0' },
+    { label: 'About', value: 'Home 0.6 · Westward 1.0' },
   ]
 }
 
@@ -371,6 +373,7 @@ function input(e: Inp) {
   }
   if (musicOpen()) { musicInput(e); return }
   if (phoneOpen()) { phoneInput(e); return }
+  if (radioOpen()) { radioInput(e); return }
   const p = top()
   if (!p) {
     if (e === 'left' || e === 'right') { focus = (focus + (e === 'right' ? 1 : -1) + APPS.length) % APPS.length; paintFocus() }
@@ -432,8 +435,8 @@ window.addEventListener('pageshow', () => { leaving = false; document.body.class
 fit()
 buildHome()
 paintClock()
-setInterval(() => { if (!stack.length && !musicOpen() && !phoneOpen()) paintClock() }, 1000)
+setInterval(() => { if (!stack.length && !musicOpen() && !phoneOpen() && !radioOpen()) paintClock() }, 1000)
 pollBt()
 
 // test hook
-;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: musicOpen() ? 'music' : phoneOpen() ? 'phone' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }
+;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: musicOpen() ? 'music' : phoneOpen() ? 'phone' : radioOpen() ? 'radio' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }
