@@ -181,7 +181,7 @@ function emptyMessage() {
   if (bt && bt.connected && !bt.player) return ['Connecting to ' + esc(String(bt.phone || 'your iPhone')) + '…', 'Start something playing on your phone.']
   if (btConnected || (sp && sp.ok)) return ['Nothing playing', 'Start a song on your iPhone and it will show up here.']
   if (sp && sp.reason === 'login') return ['Not connected to Spotify', 'Finish logging in on your Mac, or connect your iPhone in Settings › Bluetooth.']
-  return ['No phone connected', 'Connect your iPhone in Settings › Bluetooth. For Spotify cover art and scrubbing, run install-link.sh on your Mac.']
+  return ['No phone connected', 'Connect your iPhone in Settings › Bluetooth.']
 }
 
 function paint() {

@@ -26,7 +26,7 @@ export class TitleScreen implements Screen {
     items.push({ label: 'The Westward Ten', right: 'high scores', on: () => app.push(new ScoresScreen()) })
     items.push({ label: 'Options', on: () => app.push(new OptionsScreen()) })
     if (env.inDeskThing) items.push({ label: env.exitLabel, on: () => env.exit() })
-    this.menu = new Menu(items, 220, 238, 360, items.length * 38, 38, 28)
+    this.menu = new Menu(items, 150, 238, 500, items.length * 38, 38, 28)
   }
   hints(): Hints { return ['New', 'Help', 'Scores', 'Options'] }
   input(e: Inp) {
@@ -45,7 +45,7 @@ export class TitleScreen implements Screen {
     g.fillStyle = 'rgba(20,12,6,0.55)'; g.fillRect(0, 60, W, 150)
     text(g, 'WESTWARD', W / 2, 140, 96, '#f6d48a', 'center')
     text(g, '— 1 8 4 8 —', W / 2, 186, 34, C.text, 'center')
-    g.fillStyle = 'rgba(20,12,6,0.72)'; g.fillRect(200, 226, 400, this.menu.h + 24)
+    g.fillStyle = 'rgba(20,12,6,0.72)'; g.fillRect(130, 226, 540, this.menu.h + 24)
     this.menu.draw(g)
   }
 }

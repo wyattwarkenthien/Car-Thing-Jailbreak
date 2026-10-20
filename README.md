@@ -1,134 +1,154 @@
-# Westward 1848: Turning a Dead Spotify Car Thing Into a Trail Game
+# Car Thing → Desk Computer
 
-Spotify discontinued the Car Thing at the end of 2024 and shut off its servers, which left a lot of nice little gadgets sitting in drawers: an 800×480 touchscreen, a big clicky dial, four preset buttons, and a back button, all running embedded Linux. Mine was plugged into my Mac mini doing nothing. So I jailbroke it and built an Oregon Trail–style game for it, with Claude as my pair programmer the whole way through.
+Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken one into a little desk computer: an iPhone-style **home screen** you drive with the dial, two original games, a **now-playing screen** for your iPhone, and a **speed-dial** that calls your favorite contacts. Everything runs on the Car Thing itself and installs (and uninstalls) from a Mac over USB.
 
+![Home screen](docs/screenshots/01-home-screen.png)
 
-## Quick start
+| | |
+|---|---|
+| ![Apex '82](docs/screenshots/05-apex82-race.png) | ![Westward 1848](docs/screenshots/02-westward-title.png) |
+| ![Music](docs/screenshots/06-music-now-playing.png) | ![Phone](docs/screenshots/07-phone-favorites.png) |
 
-The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Phone (and Settings › Bluetooth) scans for and pairs with phones, showing the pairing code on screen to confirm. **Music** shows what's playing on the paired iPhone (any app, over Bluetooth AVRCP), and with the Mac link running, Spotify cover art and real scrubbing. Radio is a placeholder for now.
+## What's included
 
-**Try it on your computer:** open [`device/home/index.html`](device/home/index.html) in Chrome. Arrow keys = dial, Enter = press dial, Esc = back, 1–4 = preset buttons.
+- **Home screen.** App grid on the dial, presets 1–4 as shortcuts, clock and date widget, and Settings for Bluetooth, dial direction, 12/24-hour clock and time zone.
+- **Westward 1848.** An original Oregon Trail–style game: outfit a wagon, cross ~2,000 miles of trail with landmarks, forts and river crossings, plus hunting and rafting minigames, weather, illness and high scores.
+- **Apex '82.** An original pseudo-3D arcade racer in a 16-bit style. The **dial steers** and **Back shifts LO/HI**. A qualifying lap sets your grid spot, then it's 4 laps against 7 rivals plus lapped traffic on a tight clock.
+- **Music.** What's playing on your iPhone, from any app (title, artist, album, live progress), with play/pause, skip, shuffle and repeat. Audio stays on the phone.
+- **Phone.** A "stream deck" of favorite contacts. Pick one and press twice, and your iPhone dials. The call stays on the phone.
+- **Bluetooth that works.** A fix for the Car Thing's Bluetooth chip, which doesn't come up after the jailbreak, plus a pairing screen with an on-screen passkey.
 
-**Install it on a jailbroken Car Thing** (Thing Labs firmware, Mac with `adb`, or the DeskThing app, which bundles one):
+## What you need
+
+- A Spotify Car Thing and its USB-C cable.
+- A Mac. The scripts are bash and use `adb`; Linux should work too but is untested.
+- Google Chrome, for flashing the firmware.
+- `adb`. If you have the [DeskThing](https://deskthing.app/) app, the scripts use its built-in copy. Otherwise run `brew install android-platform-tools`.
+- An iPhone for Music and Phone. Android phones may work but are untested.
+
+## Install
+
+### 1. Jailbreak the Car Thing
+
+Flash the community **Thing Labs** firmware with the **Terbium** web flasher in Chrome. Follow the [Car Thing wiki flashing guide](https://carthing.wiki/first-steps/flashing/). The short version: hold buttons **1 and 4** while plugging the Car Thing into your computer (the screen stays black), then flash from the browser. Flashing replaces the Spotify software, and stock firmware can be reflashed later.
+
+### 2. Get this repo
 
 ```bash
-cd device
-bash install.sh   # backs up the original start page (first run only), installs, reboots
-bash update.sh    # push a new build of home/
-bash restore.sh   # put the original start page back
-bash sync-time.sh # set the Car Thing's clock and time zone from the Mac
-bash install-bluetooth.sh  # wake the Bluetooth chip at boot + start the pairing helper
+git clone https://github.com/wyattwarkenthien/Car-Thing-Jailbreak.git
+cd Car-Thing-Jailbreak/device
 ```
 
-Plug the Car Thing in normally (no buttons held) and let it boot first. If DeskThing is running, quit it and kill any leftover `adb` process, or the USB connection will be busy. `install.sh` saves a backup in `device/backup/`, which is git-ignored.
+(Or download the ZIP from GitHub and open the `device` folder in Terminal.)
 
-**Build from source:**
+### 3. Install the home screen
+
+Plug the Car Thing in **normally** (no buttons held), wait for it to finish booting, and quit the DeskThing app if it's open. Then:
 
 ```bash
-bash build.sh     # builds Westward and the home screen into device/home/
+bash install.sh
 ```
+
+This backs up the original startup config (first run only), copies the home screen and apps to the Car Thing, points its browser at them, and reboots into the home screen.
+
+### 4. Turn on Bluetooth (for Music and Phone)
+
+```bash
+bash install-bluetooth.sh
+```
+
+Then on the Car Thing, go to **Settings › Bluetooth › Search for devices**. On your iPhone, open **Settings › Bluetooth** so it's discoverable, pick it on the Car Thing, and confirm that the 6-digit codes match on both screens.
+
+### 5. Set the clock
+
+The Car Thing has no clock battery and no time zone data. From your Mac:
+
+```bash
+bash sync-time.sh
+```
+
+Then on the Car Thing, set **Settings › Time zone**. Run `sync-time.sh` again any time the Car Thing has been unplugged.
+
+### 6. Add your favorite contacts (for Phone)
+
+```bash
+cp favorites.example.json home/favorites.json
+open -e home/favorites.json      # put in names and numbers, up to 8
+bash update.sh
+```
+
+`home/favorites.json` is git-ignored, so your contacts never end up in a commit.
+
+## Controls
+
+| | Dial (turn) | Dial (press) | Back | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|---|---|
+| **Home** | move | open | – | Westward | Music | Radio | Phone |
+| **Westward 1848** | move / adjust | select | back / stop wagon (hold to go home) | shortcuts shown on screen | | | |
+| **Apex '82** | steer | gas (manual mode) | shift LO/HI | brake | pause | gas mode (title) | gas (manual mode) |
+| **Music** | – | play / pause | home | previous | shuffle | repeat | next |
+| **Phone** | choose | confirm, then call | cancel / home | favorite 1 | favorite 2 | favorite 3 | favorite 4 |
+
+The touchscreen works too.
+
+## Updating
+
+After pulling new changes, or editing `home/favorites.json`, run:
+
+```bash
+bash update.sh
+```
+
+To change the code itself, rebuild first (needs Node 18+). Run `bash build.sh` from the repo root, then `bash device/update.sh`.
+
+## Troubleshooting
+
+- **"Car Thing not found."** Plug it in without holding any buttons and let it finish booting. Quit the DeskThing app, which can hold the USB connection, and unplug and replug if needed.
+- **Stuck on the old DeskThing screen.** Give it a minute after an update. If it's still stuck, run `bash ../tools/check-browser.sh`, which reads the browser's logs and restarts it.
+- **Clock wrong.** Run `sync-time.sh`, and check **Settings › Time zone**.
+- **Bluetooth not working.** Run `bash ../tools/check-bluetooth.sh` for a read-only report. If the chip didn't wake at boot, re-run `install-bluetooth.sh`.
+- **iPhone keeps connecting and disconnecting.** The original Spotify app still runs in the background and can interfere. Unplug and replug the Car Thing, then re-run `install-bluetooth.sh`.
+- **General health check.** `bash ../tools/check.sh` shows what the Car Thing boots into, what's installed, and its clock next to your Mac's.
+
+The `tools/` scripts only read from the device, except `check-browser.sh`, which restarts the browser once.
+
+## Uninstall
+
+```bash
+bash restore.sh
+```
+
+This puts the original startup config back, which also removes the Bluetooth services, and reboots.
+
+## How it works
+
+- **The "firmware" is a web page.** After the Thing Labs jailbreak, the Car Thing boots a small Linux system that starts a full-screen Chromium pointed at one local HTML file. `install.sh` installs this project to `/usr/share/carthing-home/` and changes that one `--app=` line in `/etc/supervisord.conf`. Every app is a single, self-contained, offline HTML file, built for the device's old Chromium.
+- **The Bluetooth fix.** The Car Thing's Broadcom BCM20703A2 sits on `/dev/ttyS1`, and after the jailbreak it never answers: every HCI command times out. Power-cycling `gpio493` before attaching (`btattach -P bcm`) brings it up. `bt/btwake.sh` runs at boot via supervisord.
+- **Music.** The stock Bluetooth service only loads the `gap,deviceinfo` plugins. `install-bluetooth.sh` restarts it with `avrcp` (no A2DP, so audio stays on the phone). The helper opens the AVRCP channel the moment the phone connects, because without it the iPhone drops the idle link after about a second. Track info comes from BlueZ's `org.bluez.MediaPlayer1`, read with `gdbus`, since the device's Python has no D-Bus module.
+- **Phone.** The Car Thing briefly acts as a hands-free kit (HFP). It finds the iPhone's Handsfree Audio Gateway channel with `sdptool`, opens RFCOMM from Python, does the handshake (`AT+BRSF`, `AT+CIND`, `AT+CMER`), sends `ATD<number>;`, waits for the phone to report the outgoing call, then disconnects so the call stays on the phone.
+- **The helper** (`bt/bthelper.py`) is a small standard-library Python service on `127.0.0.1:8737`. It drives `bluetoothctl` as the pairing agent and serves the Settings, Music and Phone screens.
+
+**Lesson learned:** on this firmware, setting up an `adb reverse` tunnel (Car Thing → Mac) knocks the Car Thing off USB until it reboots. `adb forward` (Mac → Car Thing) is fine. See `experimental/spotify-link/`.
 
 ## Repo layout
 
 | Path | What it is |
 |---|---|
-| `device/home/` | What goes on the Car Thing: the home screen (`index.html`) and apps (`apps/westward/index.html`) |
-| `device/*.sh` | install / update / restore scripts |
-| `home/` | Home screen source. Add or change apps in `home/src/apps.ts` |
-| `home/bt/` | Runs on the Car Thing: `btwake.sh` (wakes the Bluetooth chip at boot) and `bthelper.py` (local API on 127.0.0.1:8737 for pairing) |
-| `racer/` | Apex '82 source: a pseudo-3D arcade racer (`src/main.ts` engine + race, `src/art.ts` procedurally drawn sprites) |
-| `source/` | Westward 1848 TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
-| `link/` | Runs on the Mac: `carthing_link.py` (Spotify Web API + cover-art lookup, served to the Car Thing over USB via `adb reverse`), `install-link.sh` / `uninstall-link.sh` |
-| `build.sh` | Builds both into single, offline HTML files for the device's old Chromium |
-
-## Part 1: The jailbreak
-
-The community has done most of the hard work here. The current recommended route is the **Thing Labs firmware (8.9.2)**, flashed with the **Terbium** web flasher, which runs right in Chrome over WebUSB. No drivers or command-line tools needed.
-
-1. Download the Thing Labs firmware package (about 300 MB).
-2. Put the Car Thing into **burn mode**: unplug it, hold **buttons 1 and 4**, plug it back into the Mac (straight into the machine, not a hub), and let go after a few seconds. A black screen means it worked.
-3. Open Terbium in Chrome, approve the USB device prompts, point it at the firmware, and flash.
-
-Flashing wipes the Spotify software, but the device is hard to brick since stock firmware can be reflashed.
-
-## Part 2: Ditching DeskThing
-
-The usual next step is **DeskThing**, a Mac/PC companion app that turns the Car Thing into a widget dashboard. I started building the game as a DeskThing app, but partway through I decided DeskThing wasn't for me. I wanted the Car Thing to just *be* the game, no app running on my Mac.
-
-My first thought was "let's write our own firmware." It turns out you don't need to. After the jailbreak, the device boots a small Linux system that uses `supervisord` to launch a **full-screen Chromium browser** pointed at a single local file:
-
-```
---app=file:///usr/share/qt-superbird-app/webapp/index.html
-```
-
-That page *is* the interface. So "custom firmware" really means: put your own web page on the device and change that one line.
-
-A couple of snags along the way:
-
-- **DeskThing leaves a background `adb` process running** even after you quit it, which holds the USB connection and blocks other tools. Killing it in Activity Monitor (or `pkill -f adb`) fixed it.
-- Browser-based ADB tools built for Android phones could see the device but couldn't connect, since the Car Thing is plain Linux. Running `adb` from Terminal (DeskThing ships its own copy) worked fine.
-
-## Part 3: Building Westward 1848
-
-The game is called **Westward 1848**. It's inspired by the classic, but every bit of art, writing, and design is original. It's written in **TypeScript** and draws everything to an HTML canvas, then gets bundled with **esbuild** into one self-contained HTML file that runs offline on the device.
-
-**Controls are built around the hardware:**
-
-- **Dial:** move the highlight, change amounts, aim, steer
-- **Press the dial:** select, confirm, fire
-- **Back:** go back, or stop the wagon
-- **Buttons 1–4:** context shortcuts shown at the top of the screen (on the trail: Supplies, Map, Hunt, Camp)
-
-**What's in it:**
-
-- Choose an occupation (it affects your starting money and your score multiplier), name a party of five, and pick a departure month
-- Outfit your wagon: oxen by the yoke, food in sacks, ammunition by the box, clothing, and spare wheels, axles, and tongues
-- The full ~2,000-mile route from Independence, Missouri, to Oregon's Willamette Valley, with real landmarks, forts whose prices climb as you go west, river crossings, and route forks
-- The final choice at The Dalles: raft the Columbia or pay the toll for the Barlow Road over Mount Hood
-- A hunting minigame and a rafting minigame, both played on the dial
-- Weather, illness, injuries, broken wagon parts, and pace/ration/rest decisions that all affect your party's health
-- Autosave on the device, a high-score board ("The Westward Ten"), options for dial direction and travel speed, and a tombstone with an epitaph if things go badly
-
-**Testing:** Before it ever touched the device, the game went through about a dozen automated full playthroughs (with Playwright) plus screenshot reviews. That caught real balance problems, like oxen wearing out too fast, food running out too quickly, and travel speed being off, which got tuned until a sensible run could actually make it to Oregon.
-
-## Part 4: Putting it on the device
-
-Three small shell scripts handle installing over USB with `adb`:
-
-- **install.sh** backs up the original startup config and web app (on the device and on the Mac), copies the home screen and its apps to `/usr/share/carthing-home/`, swaps the browser's `--app=` line to point at it, and reboots. The Car Thing comes up straight into the home screen.
-- **update.sh** pushes a new build and restarts the browser.
-- **restore.sh** puts the original startup config back.
-
-Everything is reversible, and the game runs entirely on the Car Thing. It only needs USB power, so a phone charger works.
-
-## Bluetooth
-
-After the jailbreak the Car Thing's Broadcom BCM20703A2 never answers at boot: the system attaches to it over `/dev/ttyS1` without resetting it first, so every command times out. Power-cycling `gpio493` before attaching brings it up. `install-bluetooth.sh` adds that as a startup service, plus a small Python helper that drives `bluetoothctl` as the pairing agent for the Settings › Bluetooth page.
-
-## Music
-
-The Music app picks a source automatically:
-
-- **Bluetooth (any app):** the Car Thing's stock Bluetooth service starts with only `gap,deviceinfo`. `install-bluetooth.sh` restarts it with the `avrcp` plugin (no A2DP, so audio stays on the phone) and the helper opens the AVRCP channel to the iPhone, which exposes title, artist, album, position, play state, shuffle and repeat as `org.bluez.MediaPlayer1`. Cover art is looked up by name through the Mac link.
-- **Spotify (via the Mac link):** `link/install-link.sh` installs a small LaunchAgent on the Mac that talks to the Spotify Web API (PKCE login, no client secret) and keeps `adb reverse tcp:8740` open so the Car Thing can reach it. This adds cover art and real seeking. Needs your own Spotify developer app (Development Mode requires the owner to have Premium) with redirect URI `http://127.0.0.1:8740/callback`.
-
-Controls: turn the dial to scrub, press it to play/pause, 1 previous, 2 shuffle, 3 repeat, 4 next, Back for home.
-
-## Apex '82
-
-An original pseudo-3D arcade racer in a 16-bit style, built for the Car Thing's controls: **dial** steers, **Back** shifts LO/HI (shift too early and the engine bogs, stay in LO and you hit the limiter), **1** brakes, **2** pauses. Gas is automatic by default; press **3** on the title screen for manual gas (hold **4** or the dial). One qualifying lap sets your grid slot, then it's 4 laps against 7 rivals on the Sunset Coast track, with time added each lap.
-
-## Phone
-
-A "stream deck" of favourite contacts. Pick one (dial, or presets 1-4), press once to confirm and again to call. The Car Thing briefly acts as a hands-free unit: it finds the iPhone's Handsfree Audio Gateway RFCOMM channel with `sdptool`, does the HFP handshake (`AT+BRSF`, `AT+CIND`, `AT+CMER`), sends `ATD<number>;`, waits for the phone to report the outgoing call, then disconnects so the call stays on the phone (the Car Thing has no speaker). Only numbers in `device/home/favorites.json` can be dialled; that file is git-ignored, see `device/favorites.example.json`.
-
-## What's next
-
-The same trick (replace the boot page) made room for a home screen, so the Car Thing now boots to an app grid with Westward as one app. Next up: filling in the Music (now-playing for the Mac), Radio (a companion screen for my Baofeng UV-5R) and Phone (Bluetooth pairing) apps.
+| `device/` | **Start here.** Install, update, restore, Bluetooth and clock scripts, plus the built files that go on the Car Thing (`device/home/`). |
+| `home/` | Home screen source: TypeScript UI (`src/`) and the on-device Bluetooth helper (`bt/`). |
+| `source/` | Westward 1848 source. |
+| `racer/` | Apex '82 source: engine and race in `src/main.ts`, procedurally drawn sprites in `src/art.ts`. |
+| `tools/` | Diagnostic scripts. |
+| `experimental/` | The Spotify-over-USB attempt. Don't use it as-is; see its WARNING. |
+| `build.sh` | Rebuilds everything into `device/home/`. |
 
 ## Credits
 
-- Jailbreak tooling: [Thing Labs](https://github.com/thinglabsoss) firmware and the Terbium web flasher. See the [Car Thing wiki](https://carthing.wiki/).
-- Font: VT323 by Peter Hull, under the SIL Open Font License.
-- Westward 1848 is an original game inspired by the classic Oregon Trail. It is not affiliated with or endorsed by the owners of that game.
-- Built by Wyatt Warkenthien with Claude as pair programmer.
+- Jailbreak: [Thing Labs](https://github.com/thinglabsoss) firmware and the Terbium flasher; the [Car Thing wiki](https://carthing.wiki/).
+- Fonts: VT323 by Peter Hull and Inter by Rasmus Andersson, both under the SIL Open Font License.
+- Westward 1848 and Apex '82 are original games inspired by the classics. They aren't affiliated with or endorsed by the owners of those games, and all their art and writing is original.
+- Built by [Wyatt Warkenthien](https://warkenthien.us), with Claude as pair programmer.
+
+## License
+
+MIT. See [LICENSE](LICENSE). Fonts keep their own license (SIL OFL 1.1).

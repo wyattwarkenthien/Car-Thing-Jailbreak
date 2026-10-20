@@ -1,9 +1,10 @@
-node_modules/
-source/out/
-source/dist/
-device/backup/
+*-report.txt
 *.zip
 .DS_Store
 __pycache__/
-racer/node_modules/
+device/backup/
 device/home/favorites.json
+node_modules/
+racer/node_modules/
+source/dist/
+source/out/
