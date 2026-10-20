@@ -5,7 +5,7 @@ Spotify discontinued the Car Thing at the end of 2024 and shut off its servers, 
 
 ## Quick start
 
-The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Phone (and Settings › Bluetooth) scans for and pairs with phones, showing the pairing code on screen to confirm. Music and Radio are placeholders for now.
+The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Phone (and Settings › Bluetooth) scans for and pairs with phones, showing the pairing code on screen to confirm. **Music** shows what's playing on the paired iPhone (any app, over Bluetooth AVRCP), and with the Mac link running, Spotify cover art and real scrubbing. Radio is a placeholder for now.
 
 **Try it on your computer:** open [`device/home/index.html`](device/home/index.html) in Chrome. Arrow keys = dial, Enter = press dial, Esc = back, 1–4 = preset buttons.
 
@@ -37,6 +37,7 @@ bash build.sh     # builds Westward and the home screen into device/home/
 | `home/` | Home screen source. Add or change apps in `home/src/apps.ts` |
 | `home/bt/` | Runs on the Car Thing: `btwake.sh` (wakes the Bluetooth chip at boot) and `bthelper.py` (local API on 127.0.0.1:8737 for pairing) |
 | `source/` | Westward 1848 TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
+| `link/` | Runs on the Mac: `carthing_link.py` (Spotify Web API + cover-art lookup, served to the Car Thing over USB via `adb reverse`), `install-link.sh` / `uninstall-link.sh` |
 | `build.sh` | Builds both into single, offline HTML files for the device's old Chromium |
 
 ## Part 1: The jailbreak
@@ -102,6 +103,15 @@ Everything is reversible, and the game runs entirely on the Car Thing. It only n
 ## Bluetooth
 
 After the jailbreak the Car Thing's Broadcom BCM20703A2 never answers at boot: the system attaches to it over `/dev/ttyS1` without resetting it first, so every command times out. Power-cycling `gpio493` before attaching brings it up. `install-bluetooth.sh` adds that as a startup service, plus a small Python helper that drives `bluetoothctl` as the pairing agent for the Settings › Bluetooth page.
+
+## Music
+
+The Music app picks a source automatically:
+
+- **Bluetooth (any app):** the Car Thing's stock Bluetooth service starts with only `gap,deviceinfo`. `install-bluetooth.sh` restarts it with the `avrcp` plugin (no A2DP, so audio stays on the phone) and the helper opens the AVRCP channel to the iPhone, which exposes title, artist, album, position, play state, shuffle and repeat as `org.bluez.MediaPlayer1`. Cover art is looked up by name through the Mac link.
+- **Spotify (via the Mac link):** `link/install-link.sh` installs a small LaunchAgent on the Mac that talks to the Spotify Web API (PKCE login, no client secret) and keeps `adb reverse tcp:8740` open so the Car Thing can reach it. This adds cover art and real seeking. Needs your own Spotify developer app (Development Mode requires the owner to have Premium) with redirect URI `http://127.0.0.1:8740/callback`.
+
+Controls: turn the dial to scrub, press it to play/pause, 1 previous, 2 shuffle, 3 repeat, 4 next, Back for home.
 
 ## What's next
 

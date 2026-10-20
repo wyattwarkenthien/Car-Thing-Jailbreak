@@ -11,6 +11,8 @@ as the pairing agent, and serves a tiny JSON API on 127.0.0.1 for the home scree
   /api/disconnect?mac=..
   /api/forget?mac=..
   /api/answer?yes=1|0         answer a pairing prompt (passkey confirmation etc.)
+  /api/media                  what's playing on the connected phone (AVRCP)
+  /api/media/cmd?c=play|pause|toggle|next|prev|shuffle|repeat
 
 Only listens on localhost. Standard library only (the device has no python dbus module).
 """
@@ -24,6 +26,9 @@ import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from urllib.parse import parse_qs, urlparse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from media import Media  # noqa: E402
 
 PORT = int(os.environ.get("BTHELPER_PORT", "8737"))
 BTCTL = os.environ.get("BTCTL", "bluetoothctl")
@@ -209,7 +214,7 @@ class Bt:
         if "AlreadyExists" in line:
             return "It's already paired."
         if "profile-unavailable" in line or "NotAvailable" in line:
-            return "Paired, but the phone has nothing to connect to yet."
+            return "The phone didn't offer anything to connect to."
         return ""
 
     # ------------------------------------------------------------ controller watch
@@ -335,6 +340,7 @@ class Bt:
 
 
 BT = None
+MEDIA = None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -343,6 +349,10 @@ class Handler(BaseHTTPRequestHandler):
         q = parse_qs(u.query)
         if u.path == "/api/status":
             body = BT.status()
+        elif u.path == "/api/media":
+            body = MEDIA.state()
+        elif u.path == "/api/media/cmd":
+            body = MEDIA.cmd((q.get("c") or [""])[0])
         elif u.path.startswith("/api/"):
             body = BT.act(u.path[5:], q)
         else:
@@ -368,8 +378,9 @@ class Server(ThreadingMixIn, HTTPServer):
 
 
 def main():
-    global BT
+    global BT, MEDIA
     BT = Bt()
+    MEDIA = Media(log)
     log("bthelper listening on 127.0.0.1:%d" % PORT)
     Server(("127.0.0.1", PORT), Handler).serve_forever()
 

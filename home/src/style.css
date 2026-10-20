@@ -94,3 +94,41 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .qtext { margin-top: 12px; font-size: 18px; line-height: 1.4; color: rgba(255,255,255,0.75); }
 .qkeys { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; margin-top: 26px; font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.55); }
 .qyes { color: #8fb4ff; }
+
+/* ---------------- Music: now playing ---------------- */
+.music { position: absolute; left: 0; top: 0; width: 800px; height: 480px; overflow: hidden; display: none; background: #111522; }
+.music.open { display: block; }
+.mbg { position: absolute; left: -60px; top: -60px; width: 920px; height: 600px; background-size: cover; background-position: center;
+  -webkit-filter: blur(40px) saturate(1.3); filter: blur(40px) saturate(1.3); opacity: 0.55; }
+.mshade { position: absolute; left: 0; top: 0; width: 800px; height: 480px; background: linear-gradient(90deg, rgba(10,12,22,0.35), rgba(10,12,22,0.7)); }
+.mpresets { position: absolute; left: 0; top: 0; width: 800px; height: 40px; display: -webkit-flex; display: flex; }
+.mpresets div { -webkit-flex: 1; flex: 1; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); }
+.mback { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; }
+.mart { position: absolute; left: 40px; top: 66px; width: 340px; height: 340px; border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  background: linear-gradient(150deg, #ff7a95, #6b2fd1); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.mart img { width: 340px; height: 340px; display: block; }
+.minfo { position: absolute; left: 412px; top: 70px; width: 352px; }
+.msrc { font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtitle { margin-top: 12px; font-size: 32px; font-weight: 700; line-height: 1.15; max-height: 74px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.martist { margin-top: 8px; font-size: 21px; font-weight: 600; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.malbum { margin-top: 4px; font-size: 16px; color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mbar { position: relative; margin-top: 30px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.22); }
+.mbar.seekable { cursor: pointer; }
+.mbar:before { content: ''; position: absolute; left: 0; right: 0; top: -14px; bottom: -14px; }
+.mfill { position: absolute; left: 0; top: 0; height: 6px; border-radius: 3px; background: #fff; }
+.mknob { position: absolute; top: -5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); -webkit-transition: -webkit-transform 120ms; transition: transform 120ms; }
+.music.scrubbing .mknob { -webkit-transform: scale(1.5); transform: scale(1.5); }
+.music.scrubbing .mtimes span:first-child { color: #fff; font-weight: 700; font-size: 17px; }
+.mtimes { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; margin-top: 10px; font-size: 15px; color: rgba(255,255,255,0.65); }
+.mctl { position: relative; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin-top: 22px; }
+.mbtn { width: 64px; height: 64px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; border-radius: 50%; }
+.mbtn.mplay { width: 76px; height: 76px; margin: 0 22px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.35); }
+.mflags { position: absolute; right: 0; top: 50%; margin-top: -30px; text-align: right; }
+.mflags span { display: block; margin: 4px 0; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.45); }
+.mflags span.on { color: #111; background: rgba(255,255,255,0.88); }
+.mempty { position: absolute; left: 0; top: 0; width: 800px; height: 480px; box-sizing: border-box; padding: 110px 120px 0; text-align: center; display: none; }
+.metitle { margin-top: 18px; font-size: 28px; font-weight: 700; }
+.metext { margin-top: 12px; font-size: 19px; line-height: 1.45; color: rgba(255,255,255,0.7); }
+.mtoast { position: absolute; left: 50%; bottom: 18px; -webkit-transform: translateX(-50%); transform: translateX(-50%); max-width: 680px; padding: 9px 18px; border-radius: 99px; font-size: 16px;
+  background: rgba(0,0,0,0.6); color: #fff; white-space: nowrap; opacity: 0; -webkit-transition: opacity 200ms; transition: opacity 200ms; }
+.mtoast.show { opacity: 1; }

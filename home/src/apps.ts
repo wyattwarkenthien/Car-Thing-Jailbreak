@@ -29,9 +29,7 @@ export const APPS: AppDef[] = [
     name: 'Music',
     colors: ['#ff7a95', '#d1325f'],
     glyph: `<g ${S}><path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.6"/><circle cx="17.5" cy="16" r="2.6"/></g>`,
-    kind: 'panel',
-    status: 'Not built yet',
-    blurb: 'A now-playing screen for the music on your Mac. Turn the dial for volume, press to play or pause, and use the presets for playlists. Sound plays from the Mac, since the Car Thing has no speaker.',
+    kind: 'panel', // full-screen now playing (src/music.ts)
   },
   {
     id: 'radio',
