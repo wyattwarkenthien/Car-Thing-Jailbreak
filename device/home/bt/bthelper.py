@@ -68,7 +68,6 @@ class Bt:
         self.names = {}         # mac -> name seen while scanning
         self.seen = {}          # mac -> last time seen while scanning
         self.controller = False
-        self.on_connect = None  # set by main(): opens the music channel as soon as a phone connects
         self.cache = None
         self.cache_at = 0.0
         threading.Thread(target=self.watch, daemon=True).start()
@@ -140,8 +139,6 @@ class Bt:
                 elif line.startswith("[DEL]"):
                     self.seen.pop(mac, None)
                 elif line.startswith("[CHG]"):
-                    if rest.startswith("Connected: yes") and self.on_connect:
-                        self.on_connect(mac)
                     if rest.startswith("Name: ") or rest.startswith("Alias: "):
                         self.names[mac] = rest.split(": ", 1)[1]
                     if rest.startswith("RSSI") or rest.startswith("Name") or rest.startswith("ManufacturerData"):
@@ -369,10 +366,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
-        try:
-            self.wfile.write(data)
-        except (BrokenPipeError, ConnectionResetError):
-            pass  # the screen gave up waiting; nothing to do
+        self.wfile.write(data)
 
     def log_message(self, *a):
         pass
@@ -387,7 +381,6 @@ def main():
     global BT, MEDIA
     BT = Bt()
     MEDIA = Media(log)
-    BT.on_connect = MEDIA.on_connect
     log("bthelper listening on 127.0.0.1:%d" % PORT)
     Server(("127.0.0.1", PORT), Handler).serve_forever()
 
