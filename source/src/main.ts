@@ -2,6 +2,10 @@ import { H, W } from './game/gfx'
 import { Inp, app } from './game/ui'
 import { TitleScreen, env } from './game/screens'
 import { store } from './game/storage'
+import { installSleep, isAsleep } from '../../shared/sleep'
+
+// 5th button on top = screen sleep; the game freezes while asleep
+installSleep()
 
 const canvas = document.getElementById('c') as HTMLCanvasElement
 const g = canvas.getContext('2d')!
@@ -18,10 +22,10 @@ fit()
 const KEYMAP: Record<string, Inp> = {
   Digit1: 'b1', Digit2: 'b2', Digit3: 'b3', Digit4: 'b4', Numpad1: 'b1', Numpad2: 'b2', Numpad3: 'b3', Numpad4: 'b4',
   Enter: 'select', NumpadEnter: 'select', Space: 'select',
-  Escape: 'back', Backspace: 'back', KeyM: 'back',
+  Escape: 'back', Backspace: 'back',
   ArrowLeft: 'left', ArrowUp: 'left', ArrowRight: 'right', ArrowDown: 'right',
 }
-const KEY_FALLBACK: Record<string, Inp> = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back', m: 'back', M: 'back' }
+const KEY_FALLBACK: Record<string, Inp> = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back' }
 
 let escDownAt = 0
 function onKeyDown(e: KeyboardEvent) {
@@ -93,6 +97,7 @@ let last = performance.now()
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
+  if (isAsleep()) { requestAnimationFrame(frame); return } // frozen while the screen sleeps
   app.update(dt)
   g.save()
   app.draw(g)

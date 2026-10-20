@@ -1,6 +1,7 @@
 // APEX '82: a retro pseudo-3D racer for the Car Thing.
 // Dial = steer, Back = shift LO/HI, 1 = brake, 2 = pause, 4 or hold dial = gas (or automatic gas).
 import * as Art from './art'
+import { installSleep, isAsleep } from '../../shared/sleep'
 
 // ---------------------------------------------------------------- constants
 const SW = 800, SH = 480 // screen
@@ -727,6 +728,8 @@ function titleScreen() {
 }
 
 // ---------------------------------------------------------------- input
+// 5th button on top = screen sleep; the race freezes while asleep (installed before the other listeners)
+installSleep((a) => { if (a && (mode === 'race' || mode === 'qualify' || mode === 'crash')) { input.gas = false; input.brake = false } })
 const env = { hosted: /[?&]from=home(&|$)/.test(location.search) }
 function goHome() { if (env.hosted) location.href = '../../index.html' }
 
@@ -763,10 +766,10 @@ function release(k: string) {
 
 const KEYS: { [k: string]: string } = {
   Digit1: 'b1', Digit2: 'b2', Digit3: 'b3', Digit4: 'b4', Numpad1: 'b1', Numpad2: 'b2', Numpad3: 'b3', Numpad4: 'b4',
-  Enter: 'select', NumpadEnter: 'select', Space: 'select', Escape: 'back', Backspace: 'back', KeyM: 'back',
+  Enter: 'select', NumpadEnter: 'select', Space: 'select', Escape: 'back', Backspace: 'back',
   ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'select', ArrowDown: 'b1',
 }
-const FALLBACK: { [k: string]: string } = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back', m: 'back', M: 'back' }
+const FALLBACK: { [k: string]: string } = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back' }
 window.addEventListener('keydown', (e) => {
   const k = KEYS[e.code] || FALLBACK[e.key]
   if (!k) return
@@ -811,6 +814,7 @@ function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000)
   frameMs = frameMs * 0.95 + (now - last) * 0.05
   last = now
+  if (isAsleep()) { requestAnimationFrame(frame); return } // frozen (and not drawing) while the screen sleeps
   // adaptive detail: keep ~40+ fps on the Car Thing by trimming the far road if needed
   if (++frames % 60 === 0) {
     if (frameMs > 24 && drawDist > 140) drawDist -= 40

@@ -3,6 +3,10 @@ import { APPS, AppDef, PRESETS } from './apps'
 import { BtPrompt, BtStatus, btApi } from './bt'
 import { input as musicInput, musicOpen, openMusic } from './music'
 import { input as phoneInput, openPhone, phoneOpen } from './phone'
+import { installSleep, lastKey } from '../../shared/sleep'
+
+// 5th button on top = screen sleep (must be installed before the other key listeners)
+installSleep()
 
 type Inp = 'left' | 'right' | 'select' | 'back' | 'b1' | 'b2' | 'b3' | 'b4'
 
@@ -167,8 +171,9 @@ function settingsRows(): Row[] {
     { label: 'Dial direction', value: reverseDial() ? 'Reversed' : 'Normal', act: () => setReverseDial(!reverseDial()) },
     { label: 'Clock', value: homeOpts().clock24 ? '24-hour' : '12-hour', act: () => { const o = homeOpts(); o.clock24 = !o.clock24; set('home_opts', o) } },
     { label: 'Time zone', value: zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
+    { label: 'Button test', value: lastKey ? 'Last: ' + lastKey : 'Press any button' },
     { label: 'Reload screen', act: () => location.reload() },
-    { label: 'About', value: 'Home 0.4 · Westward 1.0' },
+    { label: 'About', value: 'Home 0.5 · Westward 1.0' },
   ]
 }
 
@@ -386,12 +391,14 @@ function input(e: Inp) {
 const KEYMAP: { [k: string]: Inp } = {
   Digit1: 'b1', Digit2: 'b2', Digit3: 'b3', Digit4: 'b4', Numpad1: 'b1', Numpad2: 'b2', Numpad3: 'b3', Numpad4: 'b4',
   Enter: 'select', NumpadEnter: 'select', Space: 'select',
-  Escape: 'back', Backspace: 'back', KeyM: 'back',
+  Escape: 'back', Backspace: 'back',
   ArrowLeft: 'left', ArrowUp: 'left', ArrowRight: 'right', ArrowDown: 'right',
 }
-const KEY_FALLBACK: { [k: string]: Inp } = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back', m: 'back', M: 'back' }
+const KEY_FALLBACK: { [k: string]: Inp } = { '1': 'b1', '2': 'b2', '3': 'b3', '4': 'b4', Enter: 'select', Escape: 'back' }
 
 window.addEventListener('keydown', (e) => {
+  const tp = top()
+  if (tp && tp.kind === 'settings') setTimeout(buildPanel, 0)
   const inp = KEYMAP[e.code] || KEY_FALLBACK[e.key]
   if (!inp) return
   e.preventDefault(); e.stopPropagation()

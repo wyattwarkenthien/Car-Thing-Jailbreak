@@ -16,6 +16,7 @@ as the pairing agent, and serves a tiny JSON API on 127.0.0.1 for the home scree
   /api/favorites              the favourite contacts (names only) from favorites.json
   /api/call?i=N               call favourite N on the phone (hands-free dialing)
   /api/callstatus             idle | connecting | dialing | calling | error
+  /api/screen?on=0|1          backlight off (sleep) / on (wake)
 
 Only listens on localhost. Standard library only (the device has no python dbus module).
 """
@@ -33,6 +34,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from media import Media  # noqa: E402
 from calls import Caller, load_favorites  # noqa: E402
+from screen import Screen  # noqa: E402
 
 PORT = int(os.environ.get("BTHELPER_PORT", "8737"))
 BTCTL = os.environ.get("BTCTL", "bluetoothctl")
@@ -346,6 +348,7 @@ class Bt:
 BT = None
 MEDIA = None
 CALLER = None
+SCREEN = None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -367,6 +370,8 @@ class Handler(BaseHTTPRequestHandler):
                 body = {"ok": False, "error": "bad index"}
         elif u.path == "/api/callstatus":
             body = dict(CALLER.status(), ok=True)
+        elif u.path == "/api/screen":
+            body = SCREEN.set((q.get("on") or ["1"])[0] == "1")
         elif u.path.startswith("/api/"):
             body = BT.act(u.path[5:], q)
         else:
@@ -392,10 +397,11 @@ class Server(ThreadingMixIn, HTTPServer):
 
 
 def main():
-    global BT, MEDIA, CALLER
+    global BT, MEDIA, CALLER, SCREEN
     BT = Bt()
     MEDIA = Media(log)
     CALLER = Caller(log)
+    SCREEN = Screen(log)
     log("bthelper listening on 127.0.0.1:%d" % PORT)
     Server(("127.0.0.1", PORT), Handler).serve_forever()
 
