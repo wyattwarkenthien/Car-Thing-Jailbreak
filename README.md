@@ -16,6 +16,7 @@ cd device
 bash install.sh   # backs up the original start page (first run only), installs, reboots
 bash update.sh    # push a new build of home/
 bash restore.sh   # put the original start page back
+bash sync-time.sh # set the Car Thing's clock and time zone from the Mac
 ```
 
 Plug the Car Thing in normally (no buttons held) and let it boot first. If DeskThing is running, quit it and kill any leftover `adb` process, or the USB connection will be busy. `install.sh` saves a backup in `device/backup/`, which is git-ignored.
