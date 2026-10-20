@@ -8,7 +8,7 @@ import { store } from './storage'
 import { Hints, Inp, Menu, MenuItem, NumberScreen, Screen, app, bgFill, choose, footer, say, sayAll } from './ui'
 
 let game: GameState | null = null
-export const env = { inDeskThing: false, exit: () => {} }
+export const env = { inDeskThing: false, exit: () => {}, exitLabel: 'Leave game' }
 
 function save() { if (game && !game.over && !game.arrived) store.saveGame(game) }
 
@@ -25,7 +25,7 @@ export class TitleScreen implements Screen {
     items.push({ label: 'Learn about the trail', on: () => app.push(new HelpScreen()) })
     items.push({ label: 'The Westward Ten', right: 'high scores', on: () => app.push(new ScoresScreen()) })
     items.push({ label: 'Options', on: () => app.push(new OptionsScreen()) })
-    if (env.inDeskThing) items.push({ label: 'Leave game', on: () => env.exit() })
+    if (env.inDeskThing) items.push({ label: env.exitLabel, on: () => env.exit() })
     this.menu = new Menu(items, 220, 238, 360, items.length * 38, 38, 28)
   }
   hints(): Hints { return ['New', 'Help', 'Scores', 'Options'] }

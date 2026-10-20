@@ -1,0 +1,15 @@
+{
+  "name": "car-thing-home",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.0.0",
+    "esbuild": "^0.25.1",
+    "typescript": "^5.5.3"
+  }
+}

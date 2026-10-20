@@ -1,7 +1,11 @@
 #!/bin/bash
-# Push a new version of the game (index.html in this folder) without changing anything else.
+# Push a new build of the home screen and apps (the home/ folder here) without touching anything else.
 DIR="$(cd "$(dirname "$0")" && pwd)"
+TARGET=/usr/share/carthing-home
 ADB=/Applications/DeskThing.app/Contents/Resources/mac/adb
 [ -x "$ADB" ] || ADB="$(command -v adb)"
-"$ADB" shell 'mount -o remount,rw /' && "$ADB" push "$DIR/index.html" /usr/share/westward/index.html && "$ADB" shell 'sync; mount -o remount,ro / ; supervisorctl restart chromium'
-echo "Game updated."
+"$ADB" shell 'mount -o remount,rw /' &&
+  "$ADB" shell "rm -rf $TARGET" &&
+  "$ADB" push "$DIR/home" "$TARGET" >/dev/null &&
+  "$ADB" shell 'sync; mount -o remount,ro / ; supervisorctl restart chromium'
+echo "Updated."

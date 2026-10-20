@@ -1,5 +1,5 @@
 #!/bin/bash
-# Undo Westward 1848: put the Car Thing's original start page back.
+# Undo the install: put the Car Thing's original start page back.
 ADB=/Applications/DeskThing.app/Contents/Resources/mac/adb
 [ -x "$ADB" ] || ADB="$(command -v adb)"
 "$ADB" start-server >/dev/null 2>&1

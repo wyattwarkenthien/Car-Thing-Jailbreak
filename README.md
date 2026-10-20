@@ -5,34 +5,36 @@ Spotify discontinued the Car Thing at the end of 2024 and shut off its servers, 
 
 ## Quick start
 
-**Play it on your computer:** open [`device/index.html`](device/index.html) in Chrome. Arrow keys = dial, Enter = press dial, Esc = back, 1–4 = preset buttons.
+The Car Thing boots into a **home screen** with an app grid (Westward, Music, Radio, Phone, Settings). Turn the dial to move between apps, press it to open one, and press Back to return. Presets 1–4 along the top open Westward, Music, Radio and Phone directly. Inside Westward, hold Back for about a second, or pick "Home screen" on the title menu, to go home. Music, Radio and Phone are placeholders for now.
+
+**Try it on your computer:** open [`device/home/index.html`](device/home/index.html) in Chrome. Arrow keys = dial, Enter = press dial, Esc = back, 1–4 = preset buttons.
 
 **Install it on a jailbroken Car Thing** (Thing Labs firmware, Mac with `adb`, or the DeskThing app, which bundles one):
 
 ```bash
 cd device
-bash install.sh   # backs up the original start page, installs the game, reboots
-bash update.sh    # push a new build of index.html
+bash install.sh   # backs up the original start page (first run only), installs, reboots
+bash update.sh    # push a new build of home/
 bash restore.sh   # put the original start page back
 ```
 
-Plug the Car Thing in normally (no buttons held) and let it boot first. If DeskThing is running, quit it and kill any leftover `adb` process, or the USB connection will be busy. `install.sh` saves its backup in `device/backup/`, which is git-ignored.
+Plug the Car Thing in normally (no buttons held) and let it boot first. If DeskThing is running, quit it and kill any leftover `adb` process, or the USB connection will be busy. `install.sh` saves a backup in `device/backup/`, which is git-ignored.
 
 **Build from source:**
 
 ```bash
-cd source
-npm install
-npm run build:standalone   # writes out/index.html, a single offline file
+bash build.sh     # builds Westward and the home screen into device/home/
 ```
 
 ## Repo layout
 
 | Path | What it is |
 |---|---|
-| `device/` | The built game (`index.html`) and the install/update/restore scripts |
-| `source/` | TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
-| `source/build.mjs` | esbuild script that inlines everything into one HTML file for old Chromium on the device |
+| `device/home/` | What goes on the Car Thing: the home screen (`index.html`) and apps (`apps/westward/index.html`) |
+| `device/*.sh` | install / update / restore scripts |
+| `home/` | Home screen source. Add or change apps in `home/src/apps.ts` |
+| `source/` | Westward 1848 TypeScript source. `src/game/` holds the screens, simulation, data, hunting and rafting minigames |
+| `build.sh` | Builds both into single, offline HTML files for the device's old Chromium |
 
 ## Part 1: The jailbreak
 
@@ -88,15 +90,15 @@ The game is called **Westward 1848**. It's inspired by the classic, but every bi
 
 Three small shell scripts handle installing over USB with `adb`:
 
-- **install.sh** backs up the original startup config and web app (on the device and on the Mac), copies the game to `/usr/share/westward/`, swaps the browser's `--app=` line to point at it, and reboots. The Car Thing comes up straight into the game.
-- **update.sh** pushes a new build of the game and restarts the browser.
+- **install.sh** backs up the original startup config and web app (on the device and on the Mac), copies the home screen and its apps to `/usr/share/carthing-home/`, swaps the browser's `--app=` line to point at it, and reboots. The Car Thing comes up straight into the home screen.
+- **update.sh** pushes a new build and restarts the browser.
 - **restore.sh** puts the original startup config back.
 
 Everything is reversible, and the game runs entirely on the Car Thing. It only needs USB power, so a phone charger works.
 
 ## What's next
 
-The same trick (replace the boot page) opens the door to more modes. Next up is a switchable shell with an iPod-style now-playing screen and a radio companion mode for my Baofeng UV-5R, with Westward 1848 as one of the modes.
+The same trick (replace the boot page) made room for a home screen, so the Car Thing now boots to an app grid with Westward as one app. Next up: filling in the Music (now-playing for the Mac), Radio (a companion screen for my Baofeng UV-5R) and Phone (Bluetooth pairing) apps.
 
 ## Credits
 

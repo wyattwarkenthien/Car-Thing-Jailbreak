@@ -70,8 +70,16 @@ canvas.addEventListener('touchend', onPointer as EventListener, { passive: false
 canvas.addEventListener('mousedown', onPointer as EventListener)
 document.addEventListener('contextmenu', (e) => e.preventDefault())
 
+// ---------------------------------------------------------------- home screen (launcher) host
+// The launcher opens the game as apps/westward/index.html?from=home
+if (/[?&]from=home(&|$)/.test(location.search)) {
+  env.inDeskThing = true
+  env.exitLabel = 'Home screen'
+  env.exit = () => { location.href = '../../index.html' }
+}
+
 // ---------------------------------------------------------------- DeskThing (optional host)
-if (window.parent && window.parent !== window) {
+else if (window.parent && window.parent !== window) {
   env.inDeskThing = true
   import('@deskthing/client').then((mod) => {
     const DT = (mod as unknown as { DeskThing: { overrideKeys(k: string[]): void; triggerAction(a: unknown): void } }).DeskThing
