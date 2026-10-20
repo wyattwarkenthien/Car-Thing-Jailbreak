@@ -4,12 +4,14 @@ import * as Art from './art'
 
 // ---------------------------------------------------------------- constants
 const SW = 800, SH = 480 // screen
-const W = 400, H = 240 // render resolution (16-bit arcade feel)
+const RS = 2 // render scale: 2 = full 800x480
+const W = 400 * RS, H = 240 * RS
 const SEG = 200 // segment length
 const ROAD_W = 2000 // half road width in world units
 const RUMBLE = 3
 const LANES = 3
-const DRAW = 180 // segments drawn
+const DRAW = 300 // most segments drawn (lowered automatically if the device can't keep up)
+let drawDist = DRAW
 const CAM_H = 1000
 const FOV = 100
 const CAM_D = 1 / Math.tan(((FOV / 2) * Math.PI) / 180)
@@ -26,9 +28,8 @@ const CAR_W = 0.3 // car width as a fraction of half road width
 // ---------------------------------------------------------------- canvas setup
 const screen = document.getElementById('c') as HTMLCanvasElement
 const sg = screen.getContext('2d')!
-const buf = document.createElement('canvas')
-buf.width = W; buf.height = H
-const g = buf.getContext('2d')!
+// At full resolution we draw straight to the screen (copying a full-size buffer was the slowest step).
+const g = sg
 function fit() {
   const s = Math.min(window.innerWidth / SW, window.innerHeight / SH)
   screen.style.width = Math.floor(SW * s) + 'px'
@@ -56,7 +57,7 @@ const IMG = {
   chevL: Art.chevron(-1), chevR: Art.chevron(1),
   gantry: Art.gantry(),
   boom: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => Art.explosion(i / 7)),
-  hills: Art.mountains(1200, 110),
+  hills: Art.mountains(1200, 110), // 2400x220 after ART_SCALE
 }
 // world widths (units) of each kind of sprite
 const SIZE = { car: 620, board: 1500, palm: 900, bush: 700, chev: 650, gantry: ROAD_W * 2.5 }
@@ -438,16 +439,33 @@ function poly(x1: number, y1: number, x2: number, y2: number, x3: number, y3: nu
   g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x3, y3); g.lineTo(x4, y4); g.closePath(); g.fill()
 }
 
-const COL = {
+interface Pal { road: string; grass: string; rumble: string; lane: string }
+const BASE = {
   light: { road: '#6e6e74', grass: '#3fa23a', rumble: '#f4f4f4', lane: '#e8e8e8' },
   dark: { road: '#646469', grass: '#36932f', rumble: '#d8262a', lane: '' },
+}
+// distance haze baked into the colours (16 steps), so it costs nothing extra to draw
+const HAZE = [255, 170, 140]
+function mix(hex: string, f: number) {
+  if (!hex) return ''
+  const n = parseInt(hex.slice(1), 16)
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => Math.round(v + (HAZE[i] - v) * f))
+  return 'rgb(' + c.join(',') + ')'
+}
+const FOG_STEPS = 16
+const COLS: { light: Pal; dark: Pal }[] = []
+for (let k = 0; k < FOG_STEPS; k++) {
+  const f = (k / (FOG_STEPS - 1)) * 0.62
+  const m = (p: Pal): Pal => ({ road: mix(p.road, f), grass: mix(p.grass, f), rumble: mix(p.rumble, f), lane: mix(p.lane, f) })
+  COLS.push({ light: m(BASE.light), dark: m(BASE.dark) })
 }
 
 function drawSegment(s: Seg) {
   const p1 = s.p1.scr, p2 = s.p2.scr
-  const c = s.dark ? COL.dark : COL.light
+  const pal = COLS[Math.min(FOG_STEPS - 1, Math.round(Math.min(1, s.fog / 0.62) * (FOG_STEPS - 1)))]
+  const c = s.dark ? pal.dark : pal.light
   g.fillStyle = c.grass
-  g.fillRect(0, p2.y, W, p1.y - p2.y + 1)
+  g.fillRect(0, p2.y, W, p1.y - p2.y)
   const r1 = p1.w / Math.max(6, 2 * LANES), r2 = p2.w / Math.max(6, 2 * LANES)
   poly(p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, c.rumble)
   poly(p1.x + p1.w + r1, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x + p2.w + r2, p2.y, c.rumble)
@@ -470,11 +488,6 @@ function drawSegment(s: Seg) {
       poly(x1 - l1 / 2, p1.y, x1 + l1 / 2, p1.y, x2 + l2 / 2, p2.y, x2 - l2 / 2, p2.y, c.lane)
     }
   }
-  // distance haze
-  if (s.fog > 0.02) {
-    g.fillStyle = `rgba(255,170,140,${s.fog.toFixed(3)})`
-    g.fillRect(0, p2.y, W, p1.y - p2.y + 1)
-  }
 }
 
 function drawSprite(img: Art.Img, worldW: number, scale: number, x: number, y: number, ox: number, oy: number, clipY: number) {
@@ -488,23 +501,36 @@ function drawSprite(img: Art.Img, worldW: number, scale: number, x: number, y: n
   g.drawImage(img, 0, 0, img.width, img.height - (img.height * clipH) / dh, dx, dy, dw, dh - clipH)
 }
 
+let SKY: CanvasGradient | null = null
+let SUN: HTMLCanvasElement | null = null
+function makeSun() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 140 * RS
+  const s = c.getContext('2d')!
+  const m = 70 * RS
+  const gr = s.createRadialGradient(m, m, 4 * RS, m, m, 70 * RS)
+  gr.addColorStop(0, 'rgba(255,240,180,0.9)'); gr.addColorStop(0.3, 'rgba(255,190,100,0.5)'); gr.addColorStop(1, 'rgba(255,120,80,0)')
+  s.fillStyle = gr; s.fillRect(0, 0, c.width, c.height)
+  s.fillStyle = '#ffe59a'; s.beginPath(); s.arc(m, m, 20 * RS, 0, Math.PI * 2); s.fill()
+  s.fillStyle = '#ef6a4c'; for (let b = 0; b < 4; b++) s.fillRect(m - 22 * RS, m + (4 + b * 4) * RS, 44 * RS, (1 + b * 0.5) * RS)
+  return c
+}
 function drawBackground() {
-  // sunset sky
-  const sky = g.createLinearGradient(0, 0, 0, H * 0.62)
-  sky.addColorStop(0, '#1b1446'); sky.addColorStop(0.45, '#6b2f7a'); sky.addColorStop(0.8, '#ef6a4c'); sky.addColorStop(1, '#ffc36b')
-  g.fillStyle = sky; g.fillRect(0, 0, W, H)
-  // sun with bands
-  const sx = W * 0.72 - (skyOffset * 400) % W, sy = H * 0.42
+  // sunset sky (gradient and sun are built once and reused)
+  if (!SKY) {
+    SKY = g.createLinearGradient(0, 0, 0, H * 0.62)
+    SKY.addColorStop(0, '#1b1446'); SKY.addColorStop(0.45, '#6b2f7a'); SKY.addColorStop(0.8, '#ef6a4c'); SKY.addColorStop(1, '#ffc36b')
+    SUN = makeSun()
+  }
+  g.fillStyle = SKY; g.fillRect(0, 0, W, H)
+  const sx = W * 0.72 - (skyOffset * W) % W, sy = H * 0.42
   for (const off of [0, W, -W]) {
-    const gr = g.createRadialGradient(sx + off, sy, 4, sx + off, sy, 70)
-    gr.addColorStop(0, 'rgba(255,240,180,0.9)'); gr.addColorStop(0.3, 'rgba(255,190,100,0.5)'); gr.addColorStop(1, 'rgba(255,120,80,0)')
-    g.fillStyle = gr; g.fillRect(sx + off - 70, sy - 70, 140, 140)
-    g.fillStyle = '#ffe59a'; g.beginPath(); g.arc(sx + off, sy, 20, 0, Math.PI * 2); g.fill()
-    g.fillStyle = '#ef6a4c'; for (let b = 0; b < 4; b++) g.fillRect(sx + off - 22, sy + 4 + b * 4, 44, 1 + b * 0.5)
+    const x = sx + off - SUN!.width / 2
+    if (x > -SUN!.width && x < W) g.drawImage(SUN!, x, sy - SUN!.height / 2)
   }
   // mountains (parallax, tiled)
   const hw = IMG.hills.width, hh = IMG.hills.height
-  const hx = -((hillOffset * 400) % hw + hw) % hw
+  const hx = -((hillOffset * W) % hw + hw) % hw
   const hy = H * 0.5 - hh * 0.55
   for (let x = hx; x < W; x += hw) g.drawImage(IMG.hills, x, hy)
 }
@@ -521,10 +547,10 @@ function render() {
 
   drawBackground()
 
-  for (let n = 0; n < DRAW; n++) {
+  for (let n = 0; n < drawDist; n++) {
     const s = segs[(base.i + n) % segs.length]
     s.looped = s.i < base.i
-    s.fog = Math.max(0, (n / DRAW - 0.45) * 0.9)
+    s.fog = Math.max(0, (n / drawDist - 0.35) * 0.95)
     s.clip = maxy
     project(s.p1, playerX * ROAD_W - x, playerY + CAM_H, position - (s.looped ? trackLen : 0))
     project(s.p2, playerX * ROAD_W - x - dx, playerY + CAM_H, position - (s.looped ? trackLen : 0))
@@ -535,7 +561,7 @@ function render() {
     maxy = s.p1.scr.y
   }
 
-  for (let n = DRAW - 1; n > 0; n--) {
+  for (let n = drawDist - 1; n > 0; n--) {
     const s = segs[(base.i + n) % segs.length]
     for (const c of s.cars) {
       const pct = ((c.z % SEG) + SEG) % SEG / SEG
@@ -555,16 +581,16 @@ function render() {
   if (mode !== 'title' && mode !== 'over' && mode !== 'qresult') {
     const bounce = speed > 0 ? Math.sin(Date.now() / 45) * (speed / MAX) * 1.2 : 0
     const frame = steer < -0.25 ? 0 : steer > 0.25 ? 2 : 1
-    const pw = 96, ph = 56
-    const px = W / 2 - pw / 2, py = H - ph - 6 + bounce
+    const pw = IMG.player[1].width, ph = IMG.player[1].height
+    const px = W / 2 - pw / 2, py = H - ph - 6 * RS + bounce * RS
     if (mode === 'crash') {
       const f = Math.min(7, Math.floor((crashT / 1.6) * 8))
-      g.drawImage(IMG.boom[f], W / 2 - 60, H - 100)
+      g.drawImage(IMG.boom[f], W / 2 - IMG.boom[f].width / 2, H - IMG.boom[f].height)
     } else g.drawImage(IMG.player[frame], px, py)
     // dust when off road
     if (Math.abs(playerX) > 1 && speed > 0 && mode !== 'crash') {
       g.fillStyle = 'rgba(200,170,120,0.5)'
-      for (let k = 0; k < 4; k++) g.fillRect(px + (k % 2 ? 72 : 4) + Math.random() * 18, py + 46 + Math.random() * 6, 6, 4)
+      for (let k = 0; k < 4; k++) g.fillRect(px + ((k % 2 ? 72 : 4) + Math.random() * 18) * RS, py + (46 + Math.random() * 6) * RS, 6 * RS, 4 * RS)
     }
   }
 }
@@ -754,18 +780,22 @@ document.addEventListener('contextmenu', (e) => e.preventDefault())
 // ---------------------------------------------------------------- loop
 let last = performance.now()
 let frameMs = 16
+let frames = 0
 function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000)
   frameMs = frameMs * 0.95 + (now - last) * 0.05
   last = now
+  // adaptive detail: keep ~40+ fps on the Car Thing by trimming the far road if needed
+  if (++frames % 60 === 0) {
+    if (frameMs > 24 && drawDist > 140) drawDist -= 40
+    else if (frameMs < 18 && drawDist < DRAW) drawDist += 20
+  }
   if (!paused) {
     // fixed sub-steps keep the physics stable on a slow device
     let t = dt
     while (t > 0) { const s = Math.min(1 / 60, t); update(s); t -= s }
   }
   render()
-  sg.imageSmoothingEnabled = false
-  sg.drawImage(buf, 0, 0, SW, SH)
   hud()
   requestAnimationFrame(frame)
 }
@@ -783,12 +813,23 @@ if (FF && document.fonts) {
 
 // test hooks
 ;(window as unknown as { __apex: unknown }).__apex = {
-  state: () => ({ mode, position, playerX, speed: Math.round(speed * KMH), gear, lap, place, timeLeft, score: Math.round(score), gridPos, qualTime, lapTime, steer, trackLen, segs: segs.length, frameMs }),
+  state: () => ({ mode, position, playerX, speed: Math.round(speed * KMH), gear, lap, place, timeLeft, score: Math.round(score), gridPos, qualTime, lapTime, steer, trackLen, segs: segs.length, frameMs, drawDist }),
   set: (o: { playerX?: number; steer?: number }) => { if (o.playerX !== undefined) playerX = o.playerX; if (o.steer !== undefined) { steer = o.steer; lastSteer = Date.now() + 100000 } },
   curve: () => segAt(position + PLAYER_Z).curve,
   ahead: (n: number) => segAt(position + PLAYER_Z + n * SEG).curve,
   carsNear: () => cars.map((c) => ({ dz: ((c.z - position - PLAYER_Z) % trackLen + trackLen) % trackLen, offset: c.offset, speed: c.speed * KMH })),
   press, release,
+  parts: (n: number) => {
+    const T: { [k: string]: number } = { bg: 0, road: 0, all: 0, copy: 0, hud: 0 }
+    for (let i = 0; i < n; i++) {
+      let t = performance.now(); drawBackground(); T.bg += performance.now() - t
+      t = performance.now(); render(); T.all += performance.now() - t
+      t = performance.now(); hud(); T.hud += performance.now() - t
+    }
+    Object.keys(T).forEach((k) => (T[k] = Math.round((T[k] / n) * 100) / 100))
+    return T
+  },
+  bench: (n: number) => { const t0 = performance.now(); for (let i = 0; i < n; i++) { render(); hud() } return (performance.now() - t0) / n },
   // fast-forward with a simple autopilot (tests only): steers against the curve, shifts at the limiter
   sim: (seconds: number, opts: { skill?: number; shift?: boolean }) => {
     const skill = opts.skill === undefined ? 1 : opts.skill

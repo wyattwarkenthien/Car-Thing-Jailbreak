@@ -2,11 +2,14 @@
 
 export type Img = HTMLCanvasElement
 
+// Sprites are drawn at 2x detail so they stay crisp at the Car Thing's full 800x480.
+export const ART_SCALE = 2
 function mk(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void): Img {
   const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
+  c.width = w * ART_SCALE
+  c.height = h * ART_SCALE
   const g = c.getContext('2d')!
+  g.scale(ART_SCALE, ART_SCALE)
   draw(g)
   return c
 }
