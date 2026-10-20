@@ -9,8 +9,44 @@ function get<T>(k: string, def: T): T {
 }
 function set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) { /* storage unavailable */ } }
 
-interface HomeOpts { clock24: boolean }
-const homeOpts = (): HomeOpts => { const o = get<Partial<HomeOpts>>('home_opts', {}); return { clock24: !!o.clock24 } }
+interface HomeOpts { clock24: boolean; tz: string }
+const homeOpts = (): HomeOpts => { const o = get<Partial<HomeOpts>>('home_opts', {}); return { clock24: !!o.clock24, tz: o.tz || 'auto' } }
+
+// The Car Thing's firmware has no time zone data, so its browser runs on UTC.
+// We apply the offset ourselves, with US daylight saving rules.
+interface Zone { id: string; label: string; std: number; dst: boolean }
+const ZONES: Zone[] = [
+  { id: 'auto', label: 'Device setting', std: 0, dst: false },
+  { id: 'eastern', label: 'Eastern', std: -5, dst: true },
+  { id: 'central', label: 'Central', std: -6, dst: true },
+  { id: 'mountain', label: 'Mountain', std: -7, dst: true },
+  { id: 'arizona', label: 'Arizona', std: -7, dst: false },
+  { id: 'pacific', label: 'Pacific', std: -8, dst: true },
+  { id: 'alaska', label: 'Alaska', std: -9, dst: true },
+  { id: 'hawaii', label: 'Hawaii', std: -10, dst: false },
+  { id: 'utc', label: 'UTC', std: 0, dst: false },
+]
+const zoneOf = (id: string) => ZONES.filter((z) => z.id === id)[0] || ZONES[0]
+
+// nth Sunday of a month (UTC date math), n=1..
+function nthSunday(year: number, month: number, n: number) {
+  const first = new Date(Date.UTC(year, month, 1)).getUTCDay()
+  return 1 + ((7 - first) % 7) + (n - 1) * 7
+}
+function usDst(ms: number, std: number) {
+  const y = new Date(ms).getUTCFullYear()
+  const start = Date.UTC(y, 2, nthSunday(y, 2, 2), 2 - std) // 2nd Sun Mar, 2:00 standard time
+  const end = Date.UTC(y, 10, nthSunday(y, 10, 1), 2 - (std + 1)) // 1st Sun Nov, 2:00 daylight time
+  return ms >= start && ms < end
+}
+// Returns a Date whose getUTC* fields read as local wall-clock time in the chosen zone.
+function wallClock(): Date {
+  const now = Date.now()
+  const z = zoneOf(homeOpts().tz)
+  if (z.id === 'auto') return new Date(now - new Date(now).getTimezoneOffset() * 60000)
+  const off = z.std + (z.dst && usDst(now, z.std) ? 1 : 0)
+  return new Date(now + off * 3600000)
+}
 // Dial direction is shared with Westward so one setting covers both.
 const reverseDial = (): boolean => !!get<{ reverseDial?: boolean }>('westward_opts', {}).reverseDial
 function setReverseDial(v: boolean) { const o = get<Record<string, unknown>>('westward_opts', {}); o.reverseDial = v; set('westward_opts', o) }
@@ -56,12 +92,12 @@ function paintFocus() {
 }
 
 function paintClock() {
-  const d = new Date()
-  let h = d.getHours()
+  const d = wallClock()
+  let h = d.getUTCHours()
   let ampm = ''
   if (!homeOpts().clock24) { ampm = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12 }
-  $('time').innerHTML = `${homeOpts().clock24 ? pad2(h) : h}:${pad2(d.getMinutes())}<span class="ampm">${ampm}</span>`
-  $('date').textContent = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`
+  $('time').innerHTML = `${homeOpts().clock24 ? pad2(h) : h}:${pad2(d.getUTCMinutes())}<span class="ampm">${ampm}</span>`
+  $('date').textContent = `${DAYS[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 
 function paintTrail() {
@@ -109,6 +145,7 @@ function settingsRows(): Row[] {
   return [
     { label: 'Dial direction', value: () => (reverseDial() ? 'Reversed' : 'Normal'), act: () => setReverseDial(!reverseDial()) },
     { label: 'Clock', value: () => (homeOpts().clock24 ? '24-hour' : '12-hour'), act: () => { const o = homeOpts(); o.clock24 = !o.clock24; set('home_opts', o) } },
+    { label: 'Time zone', value: () => zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
     { label: 'Reload screen', value: () => '', act: () => location.reload() },
     { label: 'About', value: () => 'Home 0.1 · Westward 1.0' },
   ]
