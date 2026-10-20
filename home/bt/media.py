@@ -149,14 +149,25 @@ class Media:
         m = re.search(r"node (player\d+)", out)
         return dev_path + "/" + m.group(1) if m else None
 
-    def kick(self, dev_path):
-        """Open the AVRCP channel to a connected phone (BlueZ doesn't do it on its own)."""
+    def kick(self, dev_path, urgent=False):
+        """Open the AVRCP channel to a connected phone (BlueZ doesn't do it on its own).
+        Without an open channel the iPhone drops the link after about a second, so this runs
+        right away when a phone connects (urgent) and as a slower safety net from keeper()."""
         now = time.time()
-        if now - self.last_kick.get(dev_path, 0) < 15:
+        if now - self.last_kick.get(dev_path, 0) < (3 if urgent else 15):
             return
         self.last_kick[dev_path] = now
         code, out = call(dev_path, "org.bluez.Device1.ConnectProfile", AVRCP_TARGET, timeout=12)
         self.log("media: open AVRCP", dev_path, out.strip()[:120])
+
+    def on_connect(self, mac):
+        """Called from the bluetoothctl session the moment a device reports Connected: yes."""
+        path = "/org/bluez/hci0/dev_" + mac.replace(":", "_")
+        def go():
+            time.sleep(0.4)
+            if not self.player(path):
+                self.kick(path, urgent=True)
+        threading.Thread(target=go, daemon=True).start()
 
     def keeper(self):
         while True:
@@ -166,7 +177,7 @@ class Media:
                         self.kick(path)
             except Exception as e:  # noqa
                 self.log("media keeper", e)
-            time.sleep(5)
+            time.sleep(4)
 
     def state(self):
         now = time.time()
