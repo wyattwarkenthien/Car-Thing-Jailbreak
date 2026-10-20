@@ -23,6 +23,7 @@ const CENTRIFUGAL = 0.3
 const OFF_ROAD_MAX = MAX / 3.2
 const LAPS = 4
 const CARS = 7
+const TRAFFIC = 8 // slower backmarkers during the race, not counted in the standings
 const CAR_W = 0.3 // car width as a fraction of half road width
 
 // ---------------------------------------------------------------- canvas setup
@@ -65,7 +66,7 @@ const SIZE = { car: 620, board: 1500, palm: 900, bush: 700, chev: 650, gantry: R
 // ---------------------------------------------------------------- track
 interface P { world: { x: number; y: number; z: number }; cam: { x: number; y: number; z: number }; scr: { x: number; y: number; w: number; scale: number } }
 interface Sprite { img: Art.Img; offset: number; w: number; solid: boolean }
-interface Car { z: number; offset: number; speed: number; img: Art.Img; target: number; lap: number; seg: Seg | null; id: number }
+interface Car { z: number; offset: number; speed: number; img: Art.Img; target: number; lap: number; seg: Seg | null; id: number; skill: number; traffic: boolean; rel: number }
 interface Seg { i: number; p1: P; p2: P; curve: number; sprites: Sprite[]; cars: Car[]; dark: boolean; start: boolean; clip: number; looped: boolean; fog: number }
 
 const segs: Seg[] = []
@@ -193,12 +194,24 @@ function resetCars(forRace: boolean) {
       z = PLAYER_Z + (20 + i * 300) * SEG % trackLen
       offset = (i % 3 - 1) * 0.55
     }
-    const skill = forRace ? 0.78 + 0.13 * (1 - i / CARS) : 0.5 + (i % 3) * 0.08
-    const car: Car = { z: z % trackLen, offset, speed: 0, img: IMG.rivals[i], target: offset, lap: 0, seg: null, id: i }
-    ;(car as Car & { skill: number }).skill = skill
+    // race rivals: the leader runs ~96% of your top speed, the back of the grid ~85%
+    const skill = forRace ? 0.85 + 0.11 * (1 - i / CARS) : 0.5 + (i % 3) * 0.08
+    const car: Car = { z: z % trackLen, offset, speed: 0, img: IMG.rivals[i], target: offset, lap: 0, seg: null, id: i, skill, traffic: false, rel: 0 }
     if (!forRace) car.speed = MAX * skill
     cars.push(car)
     placeCar(car)
+  }
+  if (forRace) {
+    // backmarkers spread around the lap (well clear of the grid), so there's always someone to pass
+    const span = trackLen - 80 * SEG
+    for (let k = 0; k < TRAFFIC; k++) {
+      const z = (PLAYER_Z + 60 * SEG + (span * k) / TRAFFIC) % trackLen
+      const offset = ((k % 3) - 1) * 0.55
+      const skill = 0.5 + ((k * 37) % 17) / 100
+      const car: Car = { z, offset, speed: MAX * skill, img: IMG.rivals[(k + 3) % IMG.rivals.length], target: offset, lap: 0, seg: null, id: 100 + k, skill, traffic: true, rel: 0 }
+      cars.push(car)
+      placeCar(car)
+    }
   }
 }
 function placeCar(c: Car) {
@@ -213,7 +226,7 @@ function startQualify() {
   mode = 'qualify'; modeT = 0
   position = 0; playerX = 0; speed = 0; gear = 'LO'; steer = 0
   lap = 0; lapStart = 0; lapTime = 0; raceTime = 0; score = 0; distance = 0
-  timeLeft = Math.round(parTime() * 1.35)
+  timeLeft = Math.round(parTime() * 1.15)
   resetCars(false)
   flash('QUALIFYING LAP', 2.5)
 }
@@ -223,7 +236,7 @@ function startRace() {
   position = 7 * SEG + (7 - (gridPos - 1)) * 3 * SEG
   playerX = gridPos % 2 ? -0.45 : 0.45; speed = 0; gear = 'LO'; steer = 0
   lap = 0; lapTime = 0; raceTime = 0; distance = 0
-  timeLeft = Math.round(parTime() * 1.3)
+  timeLeft = Math.round(parTime() * 1.03)
   resetCars(true)
 }
 
@@ -234,6 +247,7 @@ const overlap = (x1: number, w1: number, x2: number, w2: number, k = 1) => {
 }
 
 let crashes = 0
+let passes = 0
 function crash() {
   crashes++
   mode = 'crash'; crashT = 0
@@ -335,7 +349,7 @@ function update(dt: number) {
       qualTime = t
       if (!save.bestLap || t < save.bestLap) save.bestLap = t
       const r = t / parTime()
-      gridPos = r < 0.97 ? 1 : r < 1.0 ? 2 : r < 1.03 ? 3 : r < 1.06 ? 4 : r < 1.1 ? 5 : r < 1.15 ? 6 : r < 1.22 ? 7 : 8
+      gridPos = r < 0.91 ? 1 : r < 0.94 ? 2 : r < 0.97 ? 3 : r < 1.0 ? 4 : r < 1.04 ? 5 : r < 1.08 ? 6 : r < 1.12 ? 7 : 8
       persist()
       mode = 'qresult'; modeT = 0
       return
@@ -346,7 +360,7 @@ function update(dt: number) {
     carsUpdate(dt)
     if (!save.bestLap || t < save.bestLap) { save.bestLap = t; persist(); flash('BEST LAP!', 2) }
     if (lap >= LAPS) { finishRace(); return }
-    const extend = Math.round(parTime() * 1.05)
+    const extend = Math.round(parTime() * 0.92)
     timeLeft += extend
     flash(`LAP ${lap + 1}  +${extend}s`, 2.2)
     lapStart = raceTime
@@ -369,8 +383,9 @@ function tickTime(dt: number) {
 function carsUpdate(dt: number) {
   const racing = mode === 'race' || (mode === 'crash' && afterCrash === 'race') || mode === 'finish'
   for (const c of cars) {
-    const skill = (c as Car & { skill: number }).skill
-    const top = MAX * skill
+    // rivals push harder when you're leading (never faster than you can go)
+    const push = racing && !c.traffic && place === 1 ? 0.03 : 0
+    const top = MAX * Math.min(0.99, c.skill + push)
     if (racing || mode === 'qualify' || afterCrash === 'qualify') {
       if (c.speed < top) c.speed = Math.min(top, c.speed + MAX * 0.2 * dt)
     }
@@ -388,10 +403,21 @@ function carsUpdate(dt: number) {
     c.offset += (c.target - c.offset) * Math.min(1, dt * 1.2)
     placeCar(c)
   }
+  // overtakes: a car that was just ahead of you is now just behind
+  if (mode === 'race') {
+    const pz = position + PLAYER_Z
+    for (const c of cars) {
+      let rel = (c.z - pz) % trackLen
+      if (rel > trackLen / 2) rel -= trackLen
+      if (rel < -trackLen / 2) rel += trackLen
+      if (c.rel > 0 && rel <= 0 && c.rel < SEG * 10 && rel > -SEG * 10) { score += c.traffic ? 150 : 400; passes++; if (msgT < 0.3) flash(c.traffic ? 'PASS +150' : 'OVERTAKE +400', 1) }
+      c.rel = rel
+    }
+  }
   // standings: total distance
   if (racing && mode !== 'finish') { // the finishing place is frozen at the line
     const me = lap * trackLen + position + PLAYER_Z
-    place = 1 + cars.filter((c) => c.lap * trackLen + c.z > me).length
+    place = 1 + cars.filter((c) => !c.traffic && c.lap * trackLen + c.z > me).length
   }
 }
 
@@ -831,16 +857,18 @@ if (FF && document.fonts) {
   },
   bench: (n: number) => { const t0 = performance.now(); for (let i = 0; i < n; i++) { render(); hud() } return (performance.now() - t0) / n },
   // fast-forward with a simple autopilot (tests only): steers against the curve, shifts at the limiter
-  sim: (seconds: number, opts: { skill?: number; shift?: boolean }) => {
+  sim: (seconds: number, opts: { skill?: number; shift?: boolean; sloppy?: number }) => {
     const skill = opts.skill === undefined ? 1 : opts.skill
+    const sloppy = opts.sloppy || 0
     let t = 0
     while (t < seconds && mode !== 'over' && mode !== 'title') {
       if (mode === 'race' || mode === 'qualify') {
         const look = segAt(position + PLAYER_Z + 6 * SEG).curve
-        const want = -playerX * 1.4 + look * 0.16 * skill
-        steer += (Math.max(-1, Math.min(1, want)) - steer) * 0.25
+        const wobble = sloppy * Math.sin(t * 1.3) * 0.6 + sloppy * (Math.random() - 0.5)
+        const want = -playerX * 1.4 + look * 0.16 * skill + wobble
+        steer += (Math.max(-1, Math.min(1, want)) - steer) * (0.25 - sloppy * 0.12)
         lastSteer = Date.now() + 1e9
-        if (opts.shift !== false && gear === 'LO' && speed > LO_MAX * 0.95) { gear = 'HI'; shiftFlash = 0.3 }
+        if (opts.shift !== false && gear === 'LO' && speed > LO_MAX * (0.95 - sloppy * 0.2) && Math.random() < 1 - sloppy * 0.95) { gear = 'HI'; shiftFlash = 0.3 }
         if (gear === 'HI' && speed < MAX * 0.3) gear = 'LO'
         // dodge traffic
         for (const c of cars) {
@@ -852,6 +880,6 @@ if (FF && document.fonts) {
       update(1 / 60); t += 1 / 60
     }
     lastSteer = 0
-    return { mode, lap, place, timeLeft: Math.round(timeLeft), qualTime, gridPos, score: Math.round(score), crashes }
+    return { mode, lap, place, timeLeft: Math.round(timeLeft), qualTime, gridPos, score: Math.round(score), crashes, passes }
   },
 }
