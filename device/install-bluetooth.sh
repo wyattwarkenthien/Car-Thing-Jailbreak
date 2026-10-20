@@ -54,7 +54,8 @@ dev "rm -rf $TARGET"
 dev "chmod 755 $TARGET/bt/*.sh $TARGET/bt/*.py; ls -la $TARGET/bt"
 
 echo "4/5 Adding Bluetooth to startup..."
-if dev 'grep -q "program:btwake" /etc/supervisord.conf'; then
+# (old adbd doesn't pass exit codes back, so compare the printed count instead)
+if [ "$(dev 'grep -c "program:btwake" /etc/supervisord.conf' | tr -dc '0-9')" != "0" ]; then
   echo "(already added)"
 else
   "$ADB" push /tmp/carthing-bt.conf /tmp/carthing-bt.conf >/dev/null
@@ -67,7 +68,7 @@ echo "5/5 Starting Bluetooth (about 20 seconds)..."
 dev 'supervisorctl reread; supervisorctl update; supervisorctl restart bthelper 2>/dev/null; supervisorctl restart chromium'
 sleep 20
 echo
-echo "== services";   dev 'supervisorctl status'
+echo "== services";   dev 'supervisorctl status'; sleep 5; dev 'supervisorctl status bluetoothd btwake bthelper'
 echo "== radio";      dev 'hciconfig hci0 2>&1 | head -4'
 echo "== helper";     dev 'wget -q -O - http://127.0.0.1:8737/api/status 2>&1 | head -c 600'; echo
 echo "== btwake log"; dev 'tail -8 /var/log/btwake.log 2>&1'
