@@ -48,13 +48,13 @@ function usDst(ms: number, std: number) {
   return ms >= start && ms < end
 }
 // Returns a Date whose getUTC* fields read as local wall-clock time in the chosen zone.
-function wallClock(): Date {
-  const now = Date.now()
+function wallAt(ms: number): Date {
   const z = zoneOf(homeOpts().tz)
-  if (z.id === 'auto') return new Date(now - new Date(now).getTimezoneOffset() * 60000)
-  const off = z.std + (z.dst && usDst(now, z.std) ? 1 : 0)
-  return new Date(now + off * 3600000)
+  if (z.id === 'auto') return new Date(ms - new Date(ms).getTimezoneOffset() * 60000)
+  const off = z.std + (z.dst && usDst(ms, z.std) ? 1 : 0)
+  return new Date(ms + off * 3600000)
 }
+function wallClock(): Date { return wallAt(Date.now()) }
 // Dial direction is shared with Westward so one setting covers both.
 const reverseDial = (): boolean => !!get<{ reverseDial?: boolean }>('westward_opts', {}).reverseDial
 function setReverseDial(v: boolean) { const o = get<Record<string, unknown>>('westward_opts', {}); o.reverseDial = v; set('westward_opts', o) }
@@ -99,7 +99,7 @@ function buildHome() {
     tiles[i].addEventListener('click', () => { focus = i; paintFocus(); openApp(APPS[i]) })
   }
   paintFocus()
-  paintTrail()
+  paintWidget()
 }
 
 function paintFocus() {
@@ -115,6 +115,81 @@ function paintClock() {
   if (!homeOpts().clock24) { ampm = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12 }
   $('time').innerHTML = `${homeOpts().clock24 ? pad2(h) : h}:${pad2(d.getUTCMinutes())}<span class="ampm">${ampm}</span>`
   $('date').textContent = `${DAYS[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
+}
+
+// ---------------------------------------------------------------- calendar (pushed from the Mac by mac/calendar/)
+interface CalEvent { title: string; start: number; end: number; allDay: boolean; date?: string; endDate?: string; location?: string }
+interface CalData { ok: boolean; updated?: number; events?: CalEvent[] }
+let calData: CalData | null = null
+
+function pollCalendar() {
+  try {
+    const x = new XMLHttpRequest()
+    x.open('GET', 'http://127.0.0.1:8737/api/calendar', true)
+    x.timeout = 5000
+    x.onload = () => { try { calData = JSON.parse(x.responseText) } catch (e) { calData = null } paintWidget() }
+    x.onerror = x.ontimeout = () => { /* keep whatever we had */ }
+    x.send()
+  } catch (e) { /* */ }
+}
+
+const ymd = (d: Date) => d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate())
+function fmtTime(ms: number) {
+  const d = wallAt(ms)
+  let h = d.getUTCHours()
+  const m = pad2(d.getUTCMinutes())
+  if (homeOpts().clock24) return pad2(h) + ':' + m
+  const ap = h < 12 ? 'AM' : 'PM'
+  h = h % 12 || 12
+  return h + ':' + m + ' ' + ap
+}
+function escH(s: string) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+// true if the event touches the given wall-clock day (YYYY-MM-DD)
+function onDay(e: CalEvent, day: string) {
+  if (e.allDay) return (e.date || '') <= day && day <= (e.endDate || e.date || '')
+  const s = ymd(wallAt(e.start)), en = ymd(wallAt(Math.max(e.start, e.end - 1)))
+  return s <= day && day <= en
+}
+
+function paintAgenda(): boolean {
+  if (!calData || !calData.ok || !calData.events) return false
+  const now = Date.now()
+  const today = ymd(wallAt(now))
+  const tomorrow = ymd(wallAt(now + 86400000))
+  const live = calData.events.filter((e) => e.end > now)
+  let label = 'Today'
+  let list = live.filter((e) => onDay(e, today))
+  if (!list.filter((e) => !e.allDay).length) {
+    const tmr = live.filter((e) => onDay(e, tomorrow) && !onDay(e, today))
+    if (tmr.length) { label = list.length ? 'Today · then tomorrow' : 'Tomorrow'; list = list.concat(tmr) }
+  }
+  if (!list.length && live.length) {
+    const d = wallAt(live[0].allDay ? live[0].start : live[0].start)
+    label = DAYS[d.getUTCDay()]
+    list = live.filter((e) => onDay(e, ymd(d)))
+  }
+  // timed events first by start, all-day ones after (they're less urgent)
+  list = list.filter((e) => !e.allDay).concat(list.filter((e) => e.allDay)).slice(0, 3)
+  let html = `<div class="wlabel">${escH(label)}</div>`
+  if (!list.length) html += `<div class="wsmall">Nothing on your calendar this week.</div>`
+  list.forEach((e) => {
+    const ongoing = !e.allDay && e.start <= now && now < e.end
+    const when = e.allDay ? 'All day' : ongoing ? 'Now · until ' + fmtTime(e.end) : fmtTime(e.start)
+    const day = !e.allDay && ymd(wallAt(e.start)) !== today && label.indexOf('then') > 0 ? 'Tomorrow ' : ''
+    html += `<div class="cev${ongoing ? ' now' : ''}"><div class="cwhen">${escH(day + when)}</div><div class="ctitle">${escH(e.title)}</div></div>`
+  })
+  const age = calData.updated ? now - calData.updated : 0
+  if (age > 30 * 60000) {
+    const hrs = Math.round(age / 3600000)
+    html += `<div class="cstale">Updated ${hrs < 1 ? Math.round(age / 60000) + ' min' : hrs < 48 ? hrs + ' hr' : Math.round(hrs / 24) + ' days'} ago · plug into your Mac to refresh</div>`
+  }
+  $('trail').innerHTML = html
+  return true
+}
+
+function paintWidget() {
+  if (!paintAgenda()) paintTrail()
 }
 
 function paintTrail() {
@@ -436,6 +511,9 @@ fit()
 buildHome()
 paintClock()
 setInterval(() => { if (!stack.length && !musicOpen() && !phoneOpen() && !radioOpen()) paintClock() }, 1000)
+pollCalendar()
+setInterval(pollCalendar, 60000)
+setInterval(() => { if (!stack.length) paintWidget() }, 20000)
 pollBt()
 
 // test hook

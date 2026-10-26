@@ -17,6 +17,7 @@ Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken o
 - **Music.** What's playing on your iPhone, from any app (title, artist, album, live progress), with play/pause, skip, shuffle and repeat. Audio stays on the phone.
 - **Radio.** A scrollable UV-5R guide for Fargo-Moorhead: local channels (weather, repeaters, railroad, MURS) color-coded by whether you can transmit, all 22 FRS/GMRS channels, the 41 radio menu settings with suggested values, and the rules. Generated from a spreadsheet, so you can swap in your own area.
 - **Phone.** A "stream deck" of favorite contacts. Pick one and press twice, and your iPhone dials. The call stays on the phone.
+- **Calendar.** Your next events under the clock ("Now · until 1:00 PM", then what's next, then tomorrow), synced from Outlook, Google or iCloud by a small job on your Mac.
 - **Sleep button.** The top-right button turns the screen and backlight off, and any touch wakes it.
 - **Bluetooth that works.** A fix for the Car Thing's Bluetooth chip, which doesn't come up after the jailbreak, plus a pairing screen with an on-screen passkey.
 
@@ -96,6 +97,18 @@ bash update.sh
 
 The touchscreen works too.
 
+## Show your calendar under the clock
+
+Any calendar that can give you a private **.ics link** works: Outlook / Microsoft 365, Google Calendar, iCloud.
+
+1. Get the link.
+   - **Outlook (web):** Settings › Calendar › Shared calendars › *Publish a calendar* › pick your calendar and **Can view all details** › Publish › copy the **ICS** link. Some work accounts have publishing turned off by IT.
+   - **Google:** Calendar settings › your calendar › *Secret address in iCal format*.
+   - **iCloud:** Calendar app › share calendar › *Public Calendar*, then copy the `webcal://` link.
+2. On your Mac: `bash mac/calendar/install-calendar.sh` and paste the link.
+
+Every 5 minutes, while the Car Thing is plugged into the Mac, the next 7 days of events are copied to it with `adb push` (to `/var/carthing/calendar.json`). Recurring meetings, skipped or moved instances, all-day events and Windows time zone names are handled. The link is stored only on your Mac (`~/Library/Application Support/carthing-calendar`, readable only by you), and anyone with the link can read the calendar, so treat it like a password. Remove it with `bash mac/calendar/uninstall-calendar.sh`.
+
 ## Make the Radio guide your own
 
 The Radio app is generated from `home/tools/UV-5R_Fargo_Guide.xlsx`. To use your own area, edit the workbook (same sheet and column layout), then run:
@@ -142,7 +155,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 - **The Bluetooth fix.** The Car Thing's Broadcom BCM20703A2 sits on `/dev/ttyS1`, and after the jailbreak it never answers: every HCI command times out. Power-cycling `gpio493` before attaching (`btattach -P bcm`) brings it up. `bt/btwake.sh` runs at boot via supervisord.
 - **Music.** The stock Bluetooth service only loads the `gap,deviceinfo` plugins. `install-bluetooth.sh` restarts it with `avrcp` (no A2DP, so audio stays on the phone). The helper opens the AVRCP channel the moment the phone connects, because without it the iPhone drops the idle link after about a second. Track info comes from BlueZ's `org.bluez.MediaPlayer1`, read with `gdbus`, since the device's Python has no D-Bus module.
 - **Phone.** The Car Thing briefly acts as a hands-free kit (HFP). It finds the iPhone's Handsfree Audio Gateway channel with `sdptool`, opens RFCOMM from Python, does the handshake (`AT+BRSF`, `AT+CIND`, `AT+CMER`), sends `ATD<number>;`, waits for the phone to report the outgoing call, then disconnects so the call stays on the phone.
-- **The helper** (`bt/bthelper.py`) is a small standard-library Python service on `127.0.0.1:8737`. It drives `bluetoothctl` as the pairing agent, serves the Settings, Music and Phone screens, and handles sleep: it stops the ambient-light `backlight` service and writes `bl_power`/`brightness` under `/sys/class/backlight`.
+- **The helper** (`bt/bthelper.py`) is a small standard-library Python service on `127.0.0.1:8737`. It drives `bluetoothctl` as the pairing agent, serves the Settings, Music, Phone and calendar screens, and handles sleep: it stops the ambient-light `backlight` service and writes `bl_power`/`brightness` under `/sys/class/backlight`.
 
 **Lesson learned:** on this firmware, setting up an `adb reverse` tunnel (Car Thing → Mac) knocks the Car Thing off USB until it reboots. `adb forward` (Mac → Car Thing) is fine. See `experimental/spotify-link/`.
 
@@ -152,6 +165,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 |---|---|
 | `device/` | **Start here.** Install, update, restore, Bluetooth and clock scripts, plus the built files that go on the Car Thing (`device/home/`). |
 | `home/` | Home screen source: TypeScript UI (`src/`) and the on-device Bluetooth helper (`bt/`). |
+| `mac/calendar/` | Runs on the Mac: syncs your calendar (.ics) to the Car Thing every 5 minutes. |
 | `shared/` | Code shared by the home screen and games (screen sleep). |
 | `source/` | Westward 1848 source. |
 | `racer/` | Apex '82 source: engine and race in `src/main.ts`, procedurally drawn sprites in `src/art.ts`. |

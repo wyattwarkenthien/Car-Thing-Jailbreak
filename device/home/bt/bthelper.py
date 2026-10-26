@@ -17,6 +17,7 @@ as the pairing agent, and serves a tiny JSON API on 127.0.0.1 for the home scree
   /api/call?i=N               call favourite N on the phone (hands-free dialing)
   /api/callstatus             idle | connecting | dialing | calling | error
   /api/screen?on=0|1          backlight off (sleep) / on (wake)
+  /api/calendar               upcoming events pushed from the Mac (mac/calendar/), or {"ok": false}
 
 Only listens on localhost. Standard library only (the device has no python dbus module).
 """
@@ -370,6 +371,12 @@ class Handler(BaseHTTPRequestHandler):
                 body = {"ok": False, "error": "bad index"}
         elif u.path == "/api/callstatus":
             body = dict(CALLER.status(), ok=True)
+        elif u.path == "/api/calendar":
+            try:
+                with open("/var/carthing/calendar.json") as f:
+                    body = dict(json.load(f), ok=True)
+            except Exception:  # noqa
+                body = {"ok": False}
         elif u.path == "/api/screen":
             body = SCREEN.set((q.get("on") or ["1"])[0] == "1")
         elif u.path.startswith("/api/"):
