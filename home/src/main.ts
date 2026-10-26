@@ -108,7 +108,15 @@ function paintFocus() {
   set('home_focus', focus)
 }
 
+// The Car Thing has no clock battery: after losing power it boots thinking it's 2015 until the Mac sets it.
+const clockUnset = () => new Date().getUTCFullYear() < 2024
+
 function paintClock() {
+  if (clockUnset()) {
+    $('time').innerHTML = '--:--'
+    $('date').textContent = 'Plug into your Mac to set the time'
+    return
+  }
   const d = wallClock()
   let h = d.getUTCHours()
   let ampm = ''
@@ -154,6 +162,7 @@ function onDay(e: CalEvent, day: string) {
 
 function paintAgenda(): boolean {
   if (!calData || !calData.ok || !calData.events) return false
+  if (clockUnset()) { $('trail').innerHTML = `<div class="wlabel">Calendar</div><div class="wsmall">Waiting for the time…</div>`; return true }
   const now = Date.now()
   const today = ymd(wallAt(now))
   const tomorrow = ymd(wallAt(now + 86400000))

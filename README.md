@@ -62,15 +62,9 @@ bash install-bluetooth.sh
 
 Then on the Car Thing, go to **Settings › Bluetooth › Search for devices**. On your iPhone, open **Settings › Bluetooth** so it's discoverable, pick it on the Car Thing, and confirm that the 6-digit codes match on both screens.
 
-### 5. Set the clock
+### 5. Keep the clock set
 
-The Car Thing has no clock battery and no time zone data. From your Mac:
-
-```bash
-bash sync-time.sh
-```
-
-Then on the Car Thing, set **Settings › Time zone**. Run `sync-time.sh` again any time the Car Thing has been unplugged.
+The Car Thing has no clock battery and no time zone data. Run `bash ../mac/calendar/install-calendar.sh` (you can skip the calendar link): it sets the clock every 5 minutes whenever the Car Thing is plugged into your Mac. Then on the Car Thing, set **Settings › Time zone**. (`sync-time.sh` still works for a one-off.)
 
 ### 6. Add your favorite contacts (for Phone)
 
@@ -105,9 +99,9 @@ Any calendar that can give you a private **.ics link** works: Outlook / Microsof
    - **Outlook (web):** Settings › Calendar › Shared calendars › *Publish a calendar* › pick your calendar and **Can view all details** › Publish › copy the **ICS** link. Some work accounts have publishing turned off by IT.
    - **Google:** Calendar settings › your calendar › *Secret address in iCal format*.
    - **iCloud:** Calendar app › share calendar › *Public Calendar*, then copy the `webcal://` link.
-2. On your Mac: `bash mac/calendar/install-calendar.sh` and paste the link.
+2. On your Mac: `bash mac/calendar/install-calendar.sh` and paste the link (or press Return to skip the calendar and only sync the clock).
 
-Every 5 minutes, while the Car Thing is plugged into the Mac, the next 7 days of events are copied to it with `adb push` (to `/var/carthing/calendar.json`). Recurring meetings, skipped or moved instances, all-day events and Windows time zone names are handled. The link is stored only on your Mac (`~/Library/Application Support/carthing-calendar`, readable only by you), and anyone with the link can read the calendar, so treat it like a password. Remove it with `bash mac/calendar/uninstall-calendar.sh`.
+The same job also **keeps the Car Thing's clock right**: it has no clock battery, so it forgets the time whenever it loses power. Every 5 minutes, while it's plugged into the Mac, the job sets the clock and copies the next 7 days of events to it with `adb push` (to `/var/carthing/calendar.json`). Recurring meetings, skipped or moved instances, all-day events and Windows time zone names are handled. The link is stored only on your Mac (`~/Library/Application Support/carthing-calendar`, readable only by you), and anyone with the link can read the calendar, so treat it like a password. Remove it with `bash mac/calendar/uninstall-calendar.sh`.
 
 ## Make the Radio guide your own
 
@@ -134,7 +128,7 @@ To change the code itself, rebuild first (needs Node 18+). Run `bash build.sh` f
 
 - **"Car Thing not found."** Plug it in without holding any buttons and let it finish booting. Quit the DeskThing app, which can hold the USB connection, and unplug and replug if needed.
 - **Stuck on the old DeskThing screen.** Give it a minute after an update. If it's still stuck, run `bash ../tools/check-browser.sh`, which reads the browser's logs and restarts it.
-- **Clock wrong.** Run `sync-time.sh`, and check **Settings › Time zone**.
+- **Clock shows --:-- or the wrong time.** The Car Thing lost power and forgot the time. Plug it into your Mac (with the calendar/clock job installed it fixes itself within 5 minutes, or run `sync-time.sh`), and check **Settings › Time zone**.
 - **Bluetooth not working.** Run `bash ../tools/check-bluetooth.sh` for a read-only report. If the chip didn't wake at boot, re-run `install-bluetooth.sh`.
 - **iPhone keeps connecting and disconnecting.** The original Spotify app still runs in the background and can interfere. Unplug and replug the Car Thing, then re-run `install-bluetooth.sh`.
 - **General health check.** `bash ../tools/check.sh` shows what the Car Thing boots into, what's installed, and its clock next to your Mac's.

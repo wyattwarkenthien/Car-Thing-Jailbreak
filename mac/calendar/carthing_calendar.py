@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Sync your calendar to the Car Thing's home screen.
+"""Sync your calendar (and the clock) to the Car Thing's home screen.
 
 Runs on the Mac (every 5 minutes via a LaunchAgent, see install-calendar.sh):
-  1. downloads your published calendar (.ics link, e.g. Outlook "Publish a calendar")
+  0. sets the Car Thing's clock from the Mac (it has no clock battery, so it forgets the time when unplugged)
+  1. downloads your published calendar (.ics link: Google "Secret address in iCal format", Outlook, iCloud)
   2. works out the events in the next 7 days, including recurring meetings
   3. copies them to the Car Thing over USB with `adb push` (to /var/carthing/calendar.json)
 
@@ -394,15 +395,35 @@ def find_adb():
     return None
 
 
-def push(data):
+def device():
+    """adb path if a Car Thing is connected, else None."""
     adb = find_adb()
     if not adb:
         log("adb not found; install DeskThing or `brew install android-platform-tools`")
-        return False
+        return None
     devs = subprocess.run([adb, "devices", "-l"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15).stdout.decode()
     if "spotify-car-thing" not in devs and "superbird" not in devs:
         log("Car Thing not connected; will try again next time")
-        return False
+        return None
+    return adb
+
+
+def sync_clock(adb):
+    """Set the Car Thing's clock (UTC) from the Mac if it's more than a few seconds off."""
+    try:
+        out = subprocess.run([adb, "shell", "date -u +%s"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15).stdout.decode()
+        dev = int(re.sub(r"[^0-9]", "", out) or 0)
+        now = int(time.time())
+        if abs(dev - now) > 5:
+            stamp = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+            subprocess.run([adb, "shell", "date -u -s '%s' >/dev/null; hwclock -w -u 2>/dev/null" % stamp],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+            log("clock was off by %d s; set it to %s UTC" % (dev - now, stamp))
+    except Exception as e:  # noqa
+        log("clock sync failed:", e)
+
+
+def push(data, adb):
     fd, tmp = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w") as f:
         json.dump(data, f)
@@ -421,14 +442,20 @@ def main():
     args = sys.argv[1:]
     local_name = local_tz_name()
     local = zone(local_name) or dt.timezone.utc
+    adb = None
+    if "--print" not in args:
+        adb = device()
+        if adb:
+            sync_clock(adb)
     if "--file" in args:
         text = open(args[args.index("--file") + 1], encoding="utf-8", errors="replace").read()
     else:
         try:
             cfg = json.load(open(CONFIG))
         except Exception:  # noqa
-            log("no calendar link set up yet; run install-calendar.sh")
-            return 1
+            cfg = {}
+        if not cfg.get("ics_url"):
+            return 0  # clock-only mode: no calendar set up
         try:
             text = fetch(cfg["ics_url"])
         except Exception as e:  # noqa
@@ -442,7 +469,9 @@ def main():
     if "--print" in args:
         print(json.dumps(data, indent=1))
         return 0
-    return 0 if push(data) else 1
+    if not adb:
+        return 1
+    return 0 if push(data, adb) else 1
 
 
 if __name__ == "__main__":

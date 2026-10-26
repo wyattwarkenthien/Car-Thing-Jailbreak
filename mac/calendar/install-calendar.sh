@@ -1,7 +1,7 @@
 #!/bin/bash
-# Show your calendar on the Car Thing's home screen.
-# Installs a small background job on this Mac that, every 5 minutes, downloads your published
-# calendar (.ics link) and copies the next 7 days of events to the Car Thing over USB.
+# Show your calendar on the Car Thing's home screen, and keep its clock right.
+# Installs a small background job on this Mac that, every 5 minutes while the Car Thing is plugged in,
+# sets its clock and copies the next 7 days of your calendar (.ics link) to it over USB.
 #
 #   bash install-calendar.sh                    # asks for your calendar link
 #   bash install-calendar.sh "https://...ics"   # or pass it in
@@ -30,19 +30,24 @@ if [ -z "$URL" ]; then
     URL="$CUR"
   else
     echo
-    echo "Paste your calendar's ICS link and press Return."
-    echo "(Outlook on the web: Settings > Calendar > Shared calendars > Publish a calendar > ICS)"
+    echo "Paste your calendar's secret ICS link and press Return."
+    echo "  Google:  calendar.google.com > Settings > your calendar > Integrate calendar > Secret address in iCal format"
+    echo "  Outlook: Settings > Calendar > Shared calendars > Publish a calendar > ICS"
+    echo "(Or just press Return to skip the calendar and only keep the clock synced.)"
     read -r URL
   fi
 fi
 URL="$(echo "$URL" | tr -d '[:space:]')"
-case "$URL" in
-  https://*|http://*|webcal://*|webcals://*) ;;
-  *) echo "That doesn't look like a calendar link (it should start with https:// and usually ends in .ics)."; exit 1 ;;
-esac
+if [ -n "$URL" ]; then
+  case "$URL" in
+    https://*|http://*|webcal://*|webcals://*) ;;
+    *) echo "That doesn't look like a calendar link (it should start with https:// and usually ends in .ics)."; exit 1 ;;
+  esac
+fi
 "$PY" -c "import json,sys; json.dump({'ics_url': sys.argv[2]}, open(sys.argv[1],'w'))" "$APP/config.json" "$URL"
 chmod 600 "$APP/config.json"
 
+if [ -z "$URL" ]; then echo "No calendar: the job will just keep the Car Thing's clock set."; else
 echo "Testing the link..."
 if ! "$PY" "$APP/carthing_calendar.py" --print > "$APP/preview.json" 2> "$APP/preview.err"; then
   cat "$APP/preview.err" "$APP/preview.json" 2>/dev/null | tail -5
@@ -52,6 +57,7 @@ fi
 COUNT="$("$PY" -c "import json,sys; print(len(json.load(open(sys.argv[1]))['events']))" "$APP/preview.json")"
 echo "Found $COUNT events in the next 7 days."
 rm -f "$APP/preview.json" "$APP/preview.err"
+fi
 
 mkdir -p "$HOME/Library/LaunchAgents"
 cat > "$PLIST" <<EOF
@@ -72,4 +78,4 @@ sleep 3
 echo
 tail -2 "$APP/sync.log" 2>/dev/null || true
 echo
-echo "Done. Your calendar will update on the Car Thing every 5 minutes while it's plugged into this Mac."
+echo "Done. While the Car Thing is plugged into this Mac, its clock is set and your calendar refreshed every 5 minutes."
