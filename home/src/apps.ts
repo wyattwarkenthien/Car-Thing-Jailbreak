@@ -84,6 +84,14 @@ export const APPS: AppDef[] = [
     kind: 'page',
     url: 'apps/neontrail/index.html?from=home',
   },
+  {
+    id: 'novastrike',
+    name: 'Nova Strike',
+    colors: ['#b06aff', '#3a1a8a'],
+    glyph: `<g ${S}><path d="M12 3l2.2 6.2 5.8 3.3-5.8 1.7L12 20l-2.2-5.8L4 12.5l5.8-3.3z"/></g>`,
+    kind: 'page',
+    url: 'apps/novastrike/index.html?from=home',
+  },
 ]
 
 // Preset buttons 1-4 (along the top of the Car Thing) open these apps.

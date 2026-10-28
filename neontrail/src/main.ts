@@ -127,13 +127,13 @@ function think(r: Rider) {
     // don't step next to an enemy head (a head-on would kill both)
     let danger = 0
     for (const o of riders) if (o !== r && o.alive && Math.abs(o.x + DX[o.dir] - nx) + Math.abs(o.y + DY[o.dir] - ny) === 0) danger = 1
-    let s = space(nx, ny, limit) * 1.0 + runLength(nx, ny, d, 12) * 1.5 + (k === 0 ? 3 : 0) - danger * 400
+    let s = space(nx, ny, limit) * 1.0 + runLength(nx, ny, d, 12) * 1.5 + (k === 0 ? 12 : 0) - danger * 400
     // cutting off the player: aim for a spot a few cells in front of them
     if (you.alive && r.skill > 0.4) {
       const tx = you.x + DX[you.dir] * 6, ty = you.y + DY[you.dir] * 6
       s -= (Math.abs(tx - nx) + Math.abs(ty - ny)) * r.skill * 0.8
     }
-    s += (Math.random() - 0.5) * (1 - r.skill) * 30
+    s += (Math.random() - 0.5) * (1 - r.skill) * 10 + (k > 0 && Math.random() < 0.03 ? 14 : 0)
     if (s > bestScore) { bestScore = s; best = d }
   }
   r.dir = best

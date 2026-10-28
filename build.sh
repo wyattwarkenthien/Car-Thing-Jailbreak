@@ -32,6 +32,11 @@ cd "$ROOT/neontrail"
 [ -e node_modules ] || npm install
 node build.mjs
 
+echo "Building Nova Strike..."
+cd "$ROOT/novastrike"
+[ -e node_modules ] || npm install
+node build.mjs
+
 echo "Building home screen..."
 cd "$ROOT/home"
 [ -d node_modules ] || npm install
