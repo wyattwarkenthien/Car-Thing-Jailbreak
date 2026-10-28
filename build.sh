@@ -27,6 +27,11 @@ cd "$ROOT/sting"
 [ -e node_modules ] || npm install
 node build.mjs
 
+echo "Building Neon Trail..."
+cd "$ROOT/neontrail"
+[ -e node_modules ] || npm install
+node build.mjs
+
 echo "Building home screen..."
 cd "$ROOT/home"
 [ -d node_modules ] || npm install

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Neon Trail</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  #wrap { position: absolute; left: 50%; top: 50%; width: 800px; height: 480px; -webkit-transform-origin: 50% 50%; transform-origin: 50% 50%; }
+  canvas { position: absolute; left: 0; top: 0; }
+  #hud { position: absolute; left: 0; top: 0; width: 800px; height: 30px; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+    font: 22px VT323, monospace; color: #9fe8ff; letter-spacing: 1px; background: #050814; border-bottom: 1px solid #1a3a5a; }
+  #hud > span { margin: 0 14px; }
+  #hud .r { margin-left: auto; }
+  #boost { display: inline-block; width: 90px; height: 10px; border: 1px solid #3ad8ff; margin-left: 6px; vertical-align: middle; position: relative; }
+  #boostf { position: absolute; left: 0; top: 0; bottom: 0; background: #3ad8ff; box-shadow: 0 0 6px #3ad8ff; }
+  #msg { position: absolute; left: 0; top: 30px; width: 800px; height: 450px; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column;
+    -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; text-align: center;
+    font: 24px VT323, monospace; color: #e8f8ff; text-shadow: 0 0 8px #3ad8ff; pointer-events: none; }
+  #msg .big { font-size: 84px; line-height: 1; color: #fff; text-shadow: 0 0 12px #3ad8ff, 0 0 30px #1a8aff; letter-spacing: 6px; }
+  #msg .mid { font-size: 40px; color: #fff; }
+  #msg .sel { color: #ffe060; text-shadow: 0 0 10px #ff9a20; }
+  #msg .dim { color: #7aa8c8; text-shadow: none; font-size: 20px; }
+  #msg .panel { background: rgba(4,8,24,0.85); border: 1px solid #2a6a9a; padding: 18px 34px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="800" height="480"></canvas>
+  <canvas id="fx" width="800" height="480"></canvas>
+  <div id="hud"></div>
+  <div id="msg"></div>
+</div>
+<script>/*JS*/</script>
+</body>
+</html>

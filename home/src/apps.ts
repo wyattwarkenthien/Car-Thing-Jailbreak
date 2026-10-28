@@ -76,6 +76,14 @@ export const APPS: AppDef[] = [
     kind: 'page',
     url: 'apps/sting/index.html?from=home',
   },
+  {
+    id: 'neontrail',
+    name: 'Neon Trail',
+    colors: ['#3ad8ff', '#1a3a9a'],
+    glyph: `<g ${S}><path d="M3 20h6v-8h6V5h6"/></g><circle cx="21" cy="5" r="1.8" fill="#fff"/>`,
+    kind: 'page',
+    url: 'apps/neontrail/index.html?from=home',
+  },
 ]
 
 // Preset buttons 1-4 (along the top of the Car Thing) open these apps.
