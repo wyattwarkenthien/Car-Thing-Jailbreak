@@ -97,7 +97,12 @@ const dir4 = (d: number): A.Dir4 => (d === 2 ? 'down' : d === 6 ? 'up' : d === 3
 
 // ---------------------------------------------------------------- tiles
 function tileAt(cx: number, cy: number): string {
-  if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) return '' // off screen: only reachable through openings
+  if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS) {
+    // just past the edge counts as open only straight out of an opening, so nothing can slide sideways
+    // outside the screen and come back in inside a wall
+    const ex = Math.max(0, Math.min(COLS - 1, cx)), ey = Math.max(0, Math.min(ROWS - 1, cy))
+    return walkable(tileAt(ex, ey)) ? '' : '#'
+  }
   const ch = grid[cy][cx]
   if (ch === 'G') return S.flags.gate ? 'g' : 'G'
   if (ch === 'Y') return S.flags.gate ? 'y' : 'Y'
@@ -220,6 +225,7 @@ function heroUpdate() {
   }
   if (hero.swing > 0) walking = false
   if (hero.inv > 0) hero.inv--
+  unstick(hero)
   if (hero.kt > 0) { hero.kt--; moveBody(hero, hero.kx, hero.ky, walkable, true); return }
 
   if (walking) {
@@ -256,6 +262,20 @@ function heroUpdate() {
   // pickups
   for (const p of picks) if (overlap(hero, p)) { collect(p); p.t = -1 }
   picks = picks.filter((p) => p.t >= 0)
+}
+
+// safety net: if Sting is ever inside something solid, move him to the nearest open spot
+function unstick(b: Body) {
+  if (!blocked(b, walkable) && !solidActorAt(b)) return
+  const x0 = b.x, y0 = b.y
+  for (let r = 2; r <= 96; r += 2) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2
+      b.x = x0 + Math.cos(a) * r; b.y = y0 + Math.sin(a) * r
+      if (b.x >= 0 && b.y >= 0 && b.x <= W - b.w && b.y <= PH - b.h && !blocked(b, walkable) && !solidActorAt(b)) return
+    }
+  }
+  b.x = x0; b.y = y0
 }
 
 function tryLeave(d: Dirn) {
@@ -921,5 +941,7 @@ if (FF && document.fonts) {
   go: (id: string, tx: number, ty: number) => { hero.x = tx * TS + 3; hero.y = ty * TS + 3; enterScreen(id); mode = 'play' },
   give: (o: Partial<SaveData>) => Object.assign(S, o),
   steps: (n: number) => { for (let i = 0; i < n; i++) step() },
-  press, release, screens: () => SCREENS, killAll: () => actors.forEach((a) => { if (isEnemy(a)) damage(a, 99, a.x, a.y - 10) }),
+  press, release, screens: () => SCREENS,
+  knock: (kx: number, ky: number) => { hero.kx = kx; hero.ky = ky; hero.kt = 10 },
+  stuck: () => blocked(hero, walkable), killAll: () => actors.forEach((a) => { if (isEnemy(a)) damage(a, 99, a.x, a.y - 10) }),
 }
