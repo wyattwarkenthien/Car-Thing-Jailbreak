@@ -68,6 +68,14 @@ export const APPS: AppDef[] = [
     kind: 'page',
     url: 'apps/foxglen/index.html?from=home',
   },
+  {
+    id: 'sting',
+    name: 'Sting',
+    colors: ['#7a96e0', '#2c3a86'],
+    glyph: `<g ${S}><path d="M20 4l-.8 4.2-8.6 8.6-3.4-3.4L15.8 4.8z"/><path d="M6 12.4l5.6 5.6M8.9 15.1l-4.1 4.1"/></g><circle cx="4.2" cy="19.8" r="1.5" fill="#fff"/>`,
+    kind: 'page',
+    url: 'apps/sting/index.html?from=home',
+  },
 ]
 
 // Preset buttons 1-4 (along the top of the Car Thing) open these apps.
