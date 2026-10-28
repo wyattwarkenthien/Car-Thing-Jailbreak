@@ -60,6 +60,14 @@ export const APPS: AppDef[] = [
     glyph: `<g ${S}><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></g>`,
     kind: 'panel',
   },
+  {
+    id: 'foxglen',
+    name: 'Foxglen',
+    colors: ['#ffb056', '#e0582a'],
+    glyph: `<g ${S}><path d="M3.5 3L9 8.2h6L20.5 3l-1.3 10L12 21l-7.2-8z"/><path d="M10.4 17.4h3.2"/></g><g fill="#fff"><circle cx="9" cy="12.4" r="1.3"/><circle cx="15" cy="12.4" r="1.3"/></g>`,
+    kind: 'page',
+    url: 'apps/foxglen/index.html?from=home',
+  },
 ]
 
 // Preset buttons 1-4 (along the top of the Car Thing) open these apps.

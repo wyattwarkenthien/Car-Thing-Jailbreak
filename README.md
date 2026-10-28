@@ -1,6 +1,6 @@
 # Car Thing → Desk Computer
 
-Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken one into a little desk computer: an iPhone-style **home screen** you drive with the dial, two original games, a **now-playing screen** for your iPhone, and a **speed-dial** that calls your favorite contacts. Everything runs on the Car Thing itself and installs (and uninstalls) from a Mac over USB.
+Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken one into a little desk computer: an iPhone-style **home screen** you drive with the dial, three original games, a **now-playing screen** for your iPhone, and a **speed-dial** that calls your favorite contacts. Everything runs on the Car Thing itself and installs (and uninstalls) from a Mac over USB.
 
 ![Home screen](docs/screenshots/01-home-screen.png)
 
@@ -8,12 +8,15 @@ Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken o
 |---|---|
 | ![Apex '82](docs/screenshots/05-apex82-race.png) | ![Westward 1848](docs/screenshots/02-westward-title.png) |
 | ![Music](docs/screenshots/06-music-now-playing.png) | ![Phone](docs/screenshots/07-phone-favorites.png) |
+| ![Foxglen](docs/screenshots/15-foxglen-meadow.png) | ![Foxglen title](docs/screenshots/14-foxglen-title.png) |
+| ![Home, page 2](docs/screenshots/16-home-page-2.png) | |
 
 ## What's included
 
-- **Home screen.** App grid on the dial, presets 1–4 as shortcuts, clock and date widget, and Settings for Bluetooth, dial direction, 12/24-hour clock and time zone.
+- **Home screen.** Two swipeable pages of apps (turn the dial past the last app, or swipe), with presets 1–4 as shortcuts, clock and date widget, and Settings for Bluetooth, dial direction, 12/24-hour clock and time zone.
 - **Westward 1848.** An original Oregon Trail–style game: outfit a wagon, cross ~2,000 miles of trail with landmarks, forts and river crossings, plus hunting and rafting minigames, weather, illness and high scores.
 - **Apex '82.** An original pseudo-3D arcade racer in a 16-bit style. The **dial steers** and **Back shifts LO/HI**. A qualifying lap sets your grid spot, then it's 4 laps against 7 rivals plus lapped traffic on a tight clock.
+- **Foxglen.** An original side-scrolling platformer starring Pip the fox, across four worlds: Meadow, the Hollow caves, the Canopy treetops and Frostpeak. **Spin the dial to run** (spin faster to sprint) and press **Back or the dial to jump**. Stomp beetles, bees and spiders, avoid spiky burrs, bump crates for acorns, and find the feather, which gives you a double jump and a glide. There are checkpoints, moving logs, a lantern to light at the end of each level, and a throttle mode for the dial if you'd rather set your speed.
 - **Music.** What's playing on your iPhone, from any app (title, artist, album, live progress), with play/pause, skip, shuffle and repeat. Audio stays on the phone.
 - **Radio.** A scrollable UV-5R guide for Fargo-Moorhead: local channels (weather, repeaters, railroad, MURS) color-coded by whether you can transmit, all 22 FRS/GMRS channels, the 41 radio menu settings with suggested values, and the rules. Generated from a spreadsheet, so you can swap in your own area.
 - **Phone.** A "stream deck" of favorite contacts. Pick one and press twice, and your iPhone dials. The call stays on the phone.
@@ -83,6 +86,7 @@ bash update.sh
 | **Home** | move | open | – | Westward | Music | Radio | Phone |
 | **Westward 1848** | move / adjust | select | back / stop wagon (hold to go home) | shortcuts shown on screen | | | |
 | **Apex '82** | steer | gas (manual mode) | shift LO/HI | brake | pause | gas mode (title) | gas (manual mode) |
+| **Foxglen** | spin to run | jump | jump | hold: walk left | hold: walk right | pause | jump |
 | **Radio** | scroll | open/close details | close / home | Channels tab | FRS/GMRS tab | Menu tab | Info tab |
 | **Music** | – | play / pause | home | previous | shuffle | repeat | next |
 | **Phone** | choose | confirm, then call | cancel / home | favorite 1 | favorite 2 | favorite 3 | favorite 4 |
@@ -162,6 +166,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 | `mac/calendar/` | Runs on the Mac: syncs your calendar (.ics) to the Car Thing every 5 minutes. |
 | `shared/` | Code shared by the home screen and games (screen sleep). |
 | `source/` | Westward 1848 source. |
+| `foxglen/` | Foxglen source: game in `src/main.ts`, levels built with a small builder in `src/levels.ts`, pixel art drawn in code in `src/art.ts`. |
 | `racer/` | Apex '82 source: engine and race in `src/main.ts`, procedurally drawn sprites in `src/art.ts`. |
 | `tools/` | Diagnostic scripts. |
 | `experimental/` | The Spotify-over-USB attempt. Don't use it as-is; see its WARNING. |
@@ -171,7 +176,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 
 - Jailbreak: [Thing Labs](https://github.com/thinglabsoss) firmware and the Terbium flasher; the [Car Thing wiki](https://carthing.wiki/).
 - Fonts: VT323 by Peter Hull and Inter by Rasmus Andersson, both under the SIL Open Font License.
-- Westward 1848 and Apex '82 are original games inspired by the classics. They aren't affiliated with or endorsed by the owners of those games, and all their art and writing is original.
+- Westward 1848, Apex '82 and Foxglen are original games inspired by the classics. They aren't affiliated with or endorsed by the owners of those games, and all their art and writing is original.
 - Built by [Wyatt Warkenthien](https://warkenthien.us), with Claude as pair programmer.
 
 ## License

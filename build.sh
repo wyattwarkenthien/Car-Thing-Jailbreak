@@ -17,6 +17,11 @@ cd "$ROOT/racer"
 [ -d node_modules ] || npm install
 node build.mjs
 
+echo "Building Foxglen..."
+cd "$ROOT/foxglen"
+[ -e node_modules ] || npm install
+node build.mjs
+
 echo "Building home screen..."
 cd "$ROOT/home"
 [ -d node_modules ] || npm install

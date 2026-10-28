@@ -92,21 +92,94 @@ function buildHome() {
     const a = APPS.filter((x) => x.id === id)[0]
     return `<div class="preset"><span class="pnum">${i + 1}</span>${a ? a.name : ''}</div>`
   }).join('')
-  $('grid').innerHTML = APPS.map((a, i) =>
-    `<div class="tile" data-i="${i}">${icon(a, 92)}<div class="label">${a.name}</div></div>`).join('')
+  let html = '<div class="strip" id="strip">'
+  for (let pg = 0; pg < PAGES; pg++) {
+    html += '<div class="page">' + APPS.slice(pg * PER_PAGE, (pg + 1) * PER_PAGE).map((a, k) =>
+      `<div class="tile" data-i="${pg * PER_PAGE + k}">${icon(a, 92)}<div class="label">${a.name}</div></div>`).join('') + '</div>'
+  }
+  $('grid').innerHTML = html + '</div>'
+  $('dots').innerHTML = PAGES > 1 ? APPS.slice(0, PAGES).map((_, i) => `<span class="dot" data-p="${i}"></span>`).join('') : ''
   const tiles = $('grid').querySelectorAll('.tile')
   for (let i = 0; i < tiles.length; i++) {
-    tiles[i].addEventListener('click', () => { focus = i; paintFocus(); openApp(APPS[i]) })
+    tiles[i].addEventListener('click', function (this: HTMLElement) {
+      if (Date.now() - swipedAt < 450) return // that touch was a swipe, not a tap
+      const k = +(this.getAttribute('data-i') || 0)
+      focus = k; paintFocus(); openApp(APPS[k])
+    })
   }
   paintFocus()
   paintWidget()
+}
+
+// ---------------------------------------------------------------- pages (6 apps each; swipe or turn the dial past the end)
+const PER_PAGE = 6
+const PAGES = Math.ceil(APPS.length / PER_PAGE)
+let page = 0
+let swipedAt = 0
+const pageOf = (i: number) => Math.floor(i / PER_PAGE)
+
+function showPage(pg: number, offsetPx = 0) {
+  page = Math.max(0, Math.min(PAGES - 1, pg))
+  const strip = document.getElementById('strip')
+  if (strip) {
+    const x = -page * 468 + offsetPx
+    strip.style.webkitTransform = `translate3d(${x}px,0,0)`
+    strip.style.transform = `translate3d(${x}px,0,0)`
+  }
+  const dots = $('dots').querySelectorAll('.dot')
+  for (let i = 0; i < dots.length; i++) dots[i].className = 'dot' + (i === page ? ' on' : '')
+}
+
+function goPage(pg: number) {
+  pg = Math.max(0, Math.min(PAGES - 1, pg))
+  if (pageOf(focus) !== pg) focus = Math.min(APPS.length - 1, pg * PER_PAGE + (focus % PER_PAGE))
+  paintFocus()
 }
 
 function paintFocus() {
   const tiles = $('grid').querySelectorAll('.tile')
   for (let i = 0; i < tiles.length; i++) tiles[i].className = 'tile' + (i === focus ? ' focus' : '')
   set('home_focus', focus)
+  showPage(pageOf(focus))
 }
+
+// swipe left/right on the app grid
+;(() => {
+  let x0 = 0, y0 = 0, dx = 0, active = false, horiz = false
+  const grid = () => $('grid')
+  const start = (x: number, y: number) => { x0 = x; y0 = y; dx = 0; active = true; horiz = false }
+  const move = (x: number, y: number, e: Event) => {
+    if (!active) return
+    dx = (x - x0) / (Math.min(window.innerWidth / 800, window.innerHeight / 480) || 1)
+    if (!horiz && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(y - y0)) { horiz = true; const s = document.getElementById('strip'); if (s) s.className = 'strip drag' }
+    if (horiz) {
+      e.preventDefault()
+      // resist past the first and last page
+      const edge = (page === 0 && dx > 0) || (page === PAGES - 1 && dx < 0)
+      showPage(page, edge ? dx / 3 : dx)
+    }
+  }
+  const end = () => {
+    if (!active) return
+    active = false
+    const s = document.getElementById('strip'); if (s) s.className = 'strip'
+    if (horiz) {
+      swipedAt = Date.now()
+      if (dx < -60 && page < PAGES - 1) goPage(page + 1)
+      else if (dx > 60 && page > 0) goPage(page - 1)
+      else showPage(page)
+    }
+  }
+  const opts = { passive: false } as AddEventListenerOptions
+  document.addEventListener('touchstart', (e) => { if (!stack.length && grid().contains(e.target as Node) && e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY) }, opts)
+  document.addEventListener('touchmove', (e) => { if (e.touches.length) move(e.touches[0].clientX, e.touches[0].clientY, e) }, opts)
+  document.addEventListener('touchend', end, opts)
+  document.addEventListener('touchcancel', end, opts)
+  // mouse drag too (handy when testing on a computer)
+  document.addEventListener('mousedown', (e) => { if (!stack.length && grid().contains(e.target as Node)) start(e.clientX, e.clientY) })
+  document.addEventListener('mousemove', (e) => move(e.clientX, e.clientY, e))
+  document.addEventListener('mouseup', end)
+})()
 
 // The Car Thing has no clock battery: after losing power it boots thinking it's 2015 until the Mac sets it.
 const clockUnset = () => new Date().getUTCFullYear() < 2024
@@ -259,7 +332,7 @@ function settingsRows(): Row[] {
     { label: 'Time zone', value: zoneOf(homeOpts().tz).label, act: () => { const o = homeOpts(); const i = ZONES.map((z) => z.id).indexOf(o.tz); o.tz = ZONES[(i + 1) % ZONES.length].id; set('home_opts', o) } },
     { label: 'Button test', value: lastKey ? 'Last: ' + lastKey : 'Press any button' },
     { label: 'Reload screen', act: () => location.reload() },
-    { label: 'About', value: 'Home 0.6 · Westward 1.0' },
+    { label: 'About', value: 'Home 0.7 · Westward 1.0' },
   ]
 }
 
@@ -526,4 +599,4 @@ setInterval(() => { if (!stack.length) paintWidget() }, 20000)
 pollBt()
 
 // test hook
-;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { focus, view: musicOpen() ? 'music' : phoneOpen() ? 'phone' : radioOpen() ? 'radio' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }
+;(window as unknown as { __home: unknown }).__home = { input, state: () => { const p = top(); return { page, focus, view: musicOpen() ? 'music' : phoneOpen() ? 'phone' : radioOpen() ? 'radio' : p ? 'panel' : 'home', panel: p && p.kind, depth: stack.length, rowFocus: p && p.focus, prompt: !!prompt } } }
