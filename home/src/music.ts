@@ -1,6 +1,7 @@
 // Music: now playing from the iPhone.
 //  - Spotify (via the Mac link at 127.0.0.1:8740, reached over USB): cover art + real scrubbing
 //  - Bluetooth (via bthelper at 127.0.0.1:8737): any app on the phone, art looked up through the Mac link
+//  - Mac (via bthelper's /api/mac/*, fed by mac/music/ over USB): Music or Spotify on the Mac, with scrubbing
 // Controls: dial = scrub, press = play/pause, 1 = previous, 2 = shuffle, 3 = repeat, 4 = next, Back = home.
 
 type Inp = 'left' | 'right' | 'select' | 'back' | 'b1' | 'b2' | 'b3' | 'b4'
@@ -9,7 +10,7 @@ const LINK = 'http://127.0.0.1:8740'
 const BTH = 'http://127.0.0.1:8737/api/'
 
 interface Now {
-  source: 'spotify' | 'bluetooth'
+  source: 'spotify' | 'bluetooth' | 'mac'
   playing: boolean
   title: string
   artist: string
@@ -58,6 +59,9 @@ let open = false
 let now: Now | null = null
 let sp: Raw | null = null // last Spotify state (null = link unreachable)
 let bt: Raw | null = null // last Bluetooth state (null = helper unreachable)
+let mac: Raw | null = null // last Mac state (ok:false when the Mac helper isn't running / not plugged in)
+const startedAt: { [src: string]: number } = {} // when each source last started playing
+const wasPlaying: { [src: string]: boolean } = {}
 let linkUp = false
 let scrubbing = false
 let scrubPos = 0
@@ -115,7 +119,7 @@ function build() {
   $('mrep').addEventListener('click', () => input('b3'))
   $('mback').addEventListener('click', () => input('back'))
   $('mbar').addEventListener('click', (e: MouseEvent) => {
-    if (!now || now.source !== 'spotify' || !now.duration) return
+    if (!now || now.source === 'bluetooth' || !now.duration) return
     const r = $('mbar').getBoundingClientRect()
     seekTo(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * now.duration)
   })
@@ -125,40 +129,52 @@ function build() {
 // ---------------------------------------------------------------- polling
 function poll() {
   let done = 0
-  const finish = () => { if (++done === 2) choose() }
-  getJSON(LINK + '/spotify/state', (r) => { sp = r; linkUp = !!r; finish() })
+  const finish = () => { if (++done === 3) choose() }
+  getJSON(LINK + '/spotify/state', (r) => { sp = r; linkUp = !!r; finish() }, 1500)
   getJSON(BTH + 'media', (r) => { bt = r; finish() })
+  getJSON(BTH + 'mac/media', (r) => { mac = r; finish() })
 }
 
 function choose() {
   if (Date.now() < pending) return
   const s = sp && sp.ok && sp.active ? sp : null
   const b = bt && bt.ok && bt.active ? bt : null
+  const m = mac && mac.ok && !mac.idle && mac.title ? mac : null
+  const cands: [string, Raw][] = []
+  if (s) cands.push(['spotify', s]); if (m) cands.push(['mac', m]); if (b) cands.push(['bluetooth', b])
+  // remember when each source started playing: whichever started most recently wins
+  cands.forEach(([k, r]) => { if (r.playing && !wasPlaying[k]) startedAt[k] = Date.now(); wasPlaying[k] = !!r.playing })
+  ;['spotify', 'mac', 'bluetooth'].forEach((k) => { if (!cands.some((c) => c[0] === k)) wasPlaying[k] = false })
   let pick: Raw | null = null
-  // Spotify has art + scrubbing, so prefer it unless something else is actually playing over Bluetooth
-  if (s && (s.playing || !(b && b.playing))) pick = s
-  else if (b) pick = b
-  else if (s) pick = s
+  let pickSrc = ''
+  const playing = cands.filter((c) => c[1].playing).sort((a, b2) => (startedAt[b2[0]] || 0) - (startedAt[a[0]] || 0))
+  if (playing.length) { pickSrc = playing[0][0]; pick = playing[0][1] }
+  else {
+    // nothing playing: stay on what's showing if it's still there, else Spotify, the Mac, then the phone
+    const keep = now && cands.filter((c) => c[0] === now!.source)[0]
+    const c = keep || cands[0]
+    if (c) { pickSrc = c[0]; pick = c[1] }
+  }
   if (!pick) {
     // Between songs the phone briefly reports nothing. Keep the last song up instead of flashing "Nothing playing".
     if (now && Date.now() - lastSeen < HOLD_MS) return
     now = null; paint(); return
   }
   lastSeen = Date.now()
-  const src = pick.source === 'spotify' ? 'spotify' : 'bluetooth'
+  const src = pickSrc as Now['source']
   now = {
     source: src,
     playing: !!pick.playing,
     title: String(pick.title || ''),
     artist: String(pick.artist || ''),
     album: String(pick.album || ''),
-    art: src === 'spotify' && pick.art ? LINK + pick.art : lookupArt(String(pick.title || ''), String(pick.artist || ''), String(pick.album || '')),
+    art: src === 'mac' ? '' : src === 'spotify' && pick.art ? LINK + pick.art : lookupArt(String(pick.title || ''), String(pick.artist || ''), String(pick.album || '')),
     duration: Number(pick.duration) || 0,
     position: Number(pick.position) || 0,
     at: Date.now(),
     shuffle: !!pick.shuffle,
     repeat: String(pick.repeat || 'off'),
-    device: src === 'spotify' ? String(pick.device || 'Spotify') : String((bt && bt.phone) || 'iPhone'),
+    device: src === 'spotify' ? String(pick.device || 'Spotify') : src === 'mac' ? String(pick.device || 'Mac') + (pick.app === 'spotify' ? ' · Spotify' : ' · Music') : String((bt && bt.phone) || 'iPhone'),
   }
   paint()
 }
@@ -179,6 +195,7 @@ function lookupArt(title: string, artist: string, album: string) {
 function emptyMessage() {
   const btConnected = bt && bt.connected
   if (bt && bt.connected && !bt.player) return ['Connecting to ' + esc(String(bt.phone || 'your iPhone')) + '…', 'Start something playing on your phone.']
+  if (mac && mac.ok) return ['Nothing playing', 'Play something in Music or Spotify on ' + esc(String(mac.device || 'your Mac')) + ', or on your iPhone.']
   if (btConnected || (sp && sp.ok)) return ['Nothing playing', 'Start a song on your iPhone and it will show up here.']
   if (sp && sp.reason === 'login') return ['Not connected to Spotify', 'Finish logging in on your Mac, or connect your iPhone in Settings › Bluetooth.']
   return ['No phone connected', 'Connect your iPhone in Settings › Bluetooth.']
@@ -199,7 +216,7 @@ function paint() {
     return
   }
   const n = now
-  $('msrc').textContent = (n.source === 'spotify' ? 'Spotify · ' : 'Bluetooth · ') + n.device
+  $('msrc').textContent = (n.source === 'spotify' ? 'Spotify · ' : n.source === 'mac' ? '' : 'Bluetooth · ') + n.device
   $('mtitle').textContent = n.title || 'Unknown title'
   $('martist').textContent = n.artist
   $('malbum').textContent = n.album
@@ -207,7 +224,7 @@ function paint() {
   $('mshuf').className = n.shuffle ? 'on' : ''
   $('mrep').className = n.repeat && n.repeat !== 'off' ? 'on' : ''
   $('mrep').textContent = n.repeat === 'track' || n.repeat === 'singletrack' ? 'Repeat one' : 'Repeat'
-  $('mbar').className = 'mbar' + (n.source === 'spotify' ? ' seekable' : '')
+  $('mbar').className = 'mbar' + (n.source !== 'bluetooth' ? ' seekable' : '')
   if (n.art !== shownArt) {
     shownArt = n.art
     if (n.art) {
@@ -257,12 +274,12 @@ function toast(msg: string) {
 function send(c: string, extra = '') {
   if (!now) return
   pending = Date.now() + 1200
-  const url = now.source === 'spotify' ? `${LINK}/spotify/cmd?c=${c}${extra}` : `${BTH}media/cmd?c=${c}`
+  const url = now.source === 'spotify' ? `${LINK}/spotify/cmd?c=${c}${extra}` : now.source === 'mac' ? `${BTH}mac/cmd?c=${c}${extra}` : `${BTH}media/cmd?c=${c}`
   getJSON(url, (r) => {
     pending = 0
     if (!r || !r.ok) {
       const reason = r && r.reason
-      toast(reason === 'premium' ? 'Spotify needs Premium for that.' : reason === 'nodevice' ? 'Spotify isn\'t playing on any device.' : reason === 'login' ? 'Log in to Spotify again on your Mac.' : 'Your phone didn\'t accept that.')
+      toast(reason === 'premium' ? 'Spotify needs Premium for that.' : reason === 'nodevice' ? 'Spotify isn\'t playing on any device.' : reason === 'login' ? 'Log in to Spotify again on your Mac.' : reason === 'nomac' ? 'Lost the link to your Mac. Is the cable plugged in?' : 'Your phone didn\'t accept that.')
     }
     window.setTimeout(poll, 350)
   }, 6000)
@@ -279,7 +296,7 @@ function seekTo(ms: number) {
 
 function scrub(dir: number) {
   if (!now) return
-  if (now.source !== 'spotify') { toast('Scrubbing works with Spotify through the Mac link.'); return }
+  if (now.source === 'bluetooth') { toast('Your phone doesn\'t allow scrubbing over Bluetooth.'); return }
   const t = Date.now()
   const fast = t - lastTurn < 90
   lastTurn = t
@@ -308,7 +325,7 @@ export function input(e: Inp) {
     now.shuffle = !now.shuffle; paint()
     send('shuffle', '&on=' + (now.shuffle ? '1' : '0'))
   } else if (e === 'b3') {
-    if (now.source === 'spotify') {
+    if (now.source !== 'bluetooth') {
       const order = ['off', 'context', 'track']
       const nx = order[(order.indexOf(now.repeat) + 1) % order.length] || 'off'
       now.repeat = nx; paint()

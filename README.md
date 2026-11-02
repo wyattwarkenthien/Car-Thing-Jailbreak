@@ -22,7 +22,7 @@ Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken o
 - **The Legend of Sting.** An original top-down sword-and-dungeon adventure with a loose high-fantasy flavor. Sting, a curly-haired hill-folk from Bramblewick, sets out to win back the stolen Dawnstone. The journey runs through 12 overworld screens (a burrow village, a lake, a dark wood full of spiders, the Barrow Downs, a troll's bridge and the burning plains) and two dungeons with keys, shutters and bosses. Along the way there's a bow, a shop, Heart Charms and an autosave. **Turn the dial to aim, hold it to walk, and press Back to swing.**
 - **Neon Trail.** An original light-trail arena game. **Each dial click turns you 90°**, and holding Back boosts. Box in the AI riders before they box you in. Every round you win adds a rider, then more speed and smarter cutoffs.
 - **Nova Strike.** An original arcade space shooter. **The dial slides your ship**, and firing is automatic (or hold Back if you prefer). Enemies swoop in, take formation and dive at you. Wardens drop double-shot, rapid-fire and shield power-ups, and a mothership attacks every fourth wave.
-- **Music.** What's playing on your iPhone, from any app (title, artist, album, live progress), with play/pause, skip, shuffle and repeat. Audio stays on the phone.
+- **Music.** What's playing on your iPhone, from any app (title, artist, album, live progress), with play/pause, skip, shuffle and repeat. Audio stays on the phone. It can also show and control **Music or Spotify on the Mac** the Car Thing is plugged into, with scrubbing (see below).
 - **Radio.** A scrollable UV-5R guide for Fargo-Moorhead: local channels (weather, repeaters, railroad, MURS) color-coded by whether you can transmit, all 22 FRS/GMRS channels, the 41 radio menu settings with suggested values, and the rules. Generated from a spreadsheet, so you can swap in your own area.
 - **Phone.** A "stream deck" of favorite contacts. Pick one and press twice, and your iPhone dials. The call stays on the phone.
 - **Calendar.** Your next events under the clock ("Now · until 1:00 PM", then what's next, then tomorrow), synced from Outlook, Google or iCloud by a small job on your Mac.
@@ -115,6 +115,16 @@ Any calendar that can give you a private **.ics link** works: Outlook / Microsof
 
 The same job also **keeps the Car Thing's clock right**: it has no clock battery, so it forgets the time whenever it loses power. Every 5 minutes, while it's plugged into the Mac, the job sets the clock and copies the next 7 days of events to it with `adb push` (to `/var/carthing/calendar.json`). Recurring meetings, skipped or moved instances, all-day events and Windows time zone names are handled. The link is stored only on your Mac (`~/Library/Application Support/carthing-calendar`, readable only by you), and anyone with the link can read the calendar, so treat it like a password. Remove it with `bash mac/calendar/uninstall-calendar.sh`.
 
+## Control your Mac's music
+
+The Music app can also show and control what's playing in **Music or Spotify on the Mac** the Car Thing is plugged into: play/pause, skip, scrub with the dial, shuffle and repeat. If your phone and your Mac are both playing, it shows whichever one started most recently.
+
+```bash
+bash mac/music/install-music.sh
+```
+
+This installs a small background job on your Mac. It talks to the Car Thing over the USB cable rather than Bluetooth, because pairing a Mac to the Car Thing over Bluetooth would send the Mac's sound to the Car Thing, which has no speaker. The first time it runs, macOS will ask whether Terminal and then `python3` may control Music or Spotify. Click OK both times. If you missed the prompts, turn them on in **System Settings › Privacy & Security › Automation**. Undo with `bash mac/music/uninstall-music.sh`.
+
 ## Make the Radio guide your own
 
 The Radio app is generated from `home/tools/UV-5R_Fargo_Guide.xlsx`. To use your own area, edit the workbook (same sheet and column layout), then run:
@@ -177,6 +187,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 | `sting/` | The Legend of Sting source: engine in `src/main.ts`, every screen and dungeon room in `src/world.ts`, pixel art drawn in code in `src/art.ts`. |
 | `neontrail/` | Neon Trail source: arena, AI riders (flood-fill space checks) and incremental neon drawing in `src/main.ts`. |
 | `novastrike/` | Nova Strike source: waves, formation and dive paths, boss in `src/main.ts`; pixel art in `src/art.ts`. |
+| `mac/music/` | Mac job that reads Music/Spotify with AppleScript and relays it to the Car Thing over `adb forward`. |
 | `foxglen/` | Foxglen source: game in `src/main.ts`, levels built with a small builder in `src/levels.ts`, pixel art drawn in code in `src/art.ts`. |
 | `racer/` | Apex '82 source: engine and race in `src/main.ts`, procedurally drawn sprites in `src/art.ts`. |
 | `tools/` | Diagnostic scripts. |

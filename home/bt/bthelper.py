@@ -18,6 +18,10 @@ as the pairing agent, and serves a tiny JSON API on 127.0.0.1 for the home scree
   /api/callstatus             idle | connecting | dialing | calling | error
   /api/screen?on=0|1          backlight off (sleep) / on (wake)
   /api/calendar               upcoming events pushed from the Mac (mac/calendar/), or {"ok": false}
+  /api/mac/media              what's playing on the Mac (pushed by mac/music/ over USB), or {"ok": false}
+  /api/mac/cmd?c=..           queue a command for the Mac (play|pause|toggle|next|prev|seek&ms=|shuffle&on=|repeat)
+  POST /api/mac/state         (from the Mac) the Mac's now-playing state as JSON
+  /api/mac/take               (from the Mac) pending commands, then clears them
 
 Only listens on localhost. Standard library only (the device has no python dbus module).
 """
@@ -346,6 +350,46 @@ class Bt:
         return {"ok": True}
 
 
+class MacLink:
+    """Now playing on a Mac. The Mac's helper (mac/music/carthing_music.py) reaches this port through
+    `adb forward` and pushes its state every second; the Car Thing never connects out to the Mac."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.data = None
+        self.at = 0
+        self.cmds = []
+
+    def push(self, d):
+        with self.lock:
+            self.data = d
+            self.at = time.time()
+        return {"ok": True}
+
+    def state(self):
+        with self.lock:
+            if not self.data or time.time() - self.at > 6:
+                return {"ok": False, "reason": "nomac"}
+            return dict(self.data, ok=True, source="mac", age=round(time.time() - self.at, 1))
+
+    def cmd(self, q):
+        c = (q.get("c") or [""])[0]
+        if c not in ("play", "pause", "toggle", "next", "prev", "seek", "shuffle", "repeat"):
+            return {"ok": False, "error": "unknown command"}
+        item = {"c": c, "ms": (q.get("ms") or [""])[0], "on": (q.get("on") or [""])[0], "mode": (q.get("mode") or [""])[0]}
+        with self.lock:
+            if not self.data or time.time() - self.at > 6:
+                return {"ok": False, "reason": "nomac"}
+            self.cmds = (self.cmds + [item])[-10:]
+        return {"ok": True}
+
+    def take(self):
+        with self.lock:
+            out, self.cmds = self.cmds, []
+        return {"ok": True, "cmds": out}
+
+
+MACLINK = MacLink()
 BT = None
 MEDIA = None
 CALLER = None
@@ -379,12 +423,34 @@ class Handler(BaseHTTPRequestHandler):
                 body = {"ok": False}
         elif u.path == "/api/screen":
             body = SCREEN.set((q.get("on") or ["1"])[0] == "1")
+        elif u.path == "/api/mac/media":
+            body = MACLINK.state()
+        elif u.path == "/api/mac/cmd":
+            body = MACLINK.cmd(q)
+        elif u.path == "/api/mac/take":
+            body = MACLINK.take()
         elif u.path.startswith("/api/"):
             body = BT.act(u.path[5:], q)
         else:
             self.send_response(404)
             self.end_headers()
             return
+        self.reply(body)
+
+    def do_POST(self):
+        u = urlparse(self.path)
+        if u.path != "/api/mac/state":
+            self.send_response(404)
+            self.end_headers()
+            return
+        try:
+            n = min(int(self.headers.get("Content-Length") or 0), 65536)
+            body = MACLINK.push(json.loads(self.rfile.read(n).decode("utf-8")))
+        except Exception as e:  # noqa
+            body = {"ok": False, "error": str(e)[:100]}
+        self.reply(body)
+
+    def reply(self, body):
         data = json.dumps(body).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
