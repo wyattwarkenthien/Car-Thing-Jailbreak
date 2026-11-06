@@ -47,11 +47,11 @@ function fmt(ms: number) {
 }
 
 const ICON = {
-  prev: '<svg viewBox="0 0 24 24" width="34" height="34"><path fill="#fff" d="M6 5h2.4v14H6zM20 5v14L9.5 12z"/></svg>',
-  next: '<svg viewBox="0 0 24 24" width="34" height="34"><path fill="#fff" d="M15.6 5H18v14h-2.4zM4 5l10.5 7L4 19z"/></svg>',
-  play: '<svg viewBox="0 0 24 24" width="40" height="40"><path fill="#111" d="M7 4.5v15L19.5 12z"/></svg>',
-  pause: '<svg viewBox="0 0 24 24" width="40" height="40"><path fill="#111" d="M6 4.5h4.2v15H6zm7.8 0H18v15h-4.2z"/></svg>',
-  note: '<svg viewBox="0 0 24 24" width="96" height="96"><g fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.6"/><circle cx="17.5" cy="16" r="2.6"/></g></svg>',
+  prev: '<svg viewBox="0 0 7 7" width="28" height="28" shape-rendering="crispEdges"><path fill="currentColor" d="M0 1h1v5h-1zM5 1h1v5h-1zM4 2h1v3h-1zM3 3h1v1h-1z"/></svg>',
+  next: '<svg viewBox="0 0 7 7" width="28" height="28" shape-rendering="crispEdges"><path fill="currentColor" d="M1 1h1v5h-1zM6 1h1v5h-1zM2 2h1v3h-1zM3 3h1v1h-1z"/></svg>',
+  play: '<svg viewBox="0 0 7 7" width="32" height="32" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h1v7h-1zM2 1h1v5h-1zM3 2h1v3h-1zM4 3h1v1h-1z"/></svg>',
+  pause: '<svg viewBox="0 0 7 7" width="32" height="32" shape-rendering="crispEdges"><path fill="currentColor" d="M1 0h2v7h-2zM4 0h2v7h-2z"/></svg>',
+  note: '<svg viewBox="0 0 12 12" width="156" height="156" shape-rendering="crispEdges"><path fill="#7dff6a" d="M5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM5 2h1v1h-1zM10 2h1v1h-1zM5 3h1v1h-1zM10 3h1v1h-1zM5 4h1v1h-1zM10 4h1v1h-1zM5 5h1v1h-1zM10 5h1v1h-1zM5 6h1v1h-1zM10 6h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM8 7h1v1h-1zM9 7h1v1h-1zM10 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM9 8h1v1h-1zM10 8h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM4 9h1v1h-1zM5 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM9 9h1v1h-1zM10 9h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1z"/></svg>',
 }
 
 // ---------------------------------------------------------------- state

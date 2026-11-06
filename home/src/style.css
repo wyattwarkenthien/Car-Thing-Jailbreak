@@ -1,6 +1,8 @@
 @font-face { font-family: 'Inter'; font-weight: 400; src: url(FONT400) format('woff2'); }
 @font-face { font-family: 'Inter'; font-weight: 600; src: url(FONT600) format('woff2'); }
 @font-face { font-family: 'Inter'; font-weight: 700; src: url(FONT700) format('woff2'); }
+@font-face { font-family: 'PS2P'; src: url(FONTPS2P) format('woff2'); }
+@font-face { font-family: 'VT323'; src: url(FONTVT323) format('woff2'); }
 
 html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; cursor: none; }
 body { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none; }
@@ -212,3 +214,95 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .rkv b { -webkit-flex: 1; flex: 1; font-weight: 600; }
 .rsrc { margin-top: 6px; font-size: 13px; color: rgba(255,255,255,0.45); }
 .rhint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 13px; color: rgba(255,255,255,0.4); }
+
+
+/* ================================================================
+   8-bit green phosphor theme for Music, Phone and Radio
+   (the home screen and the games keep their own looks)
+   ================================================================ */
+.music, .phone, .radio { background: #040a04; color: #7dff6a; font-family: 'VT323', monospace; -webkit-font-smoothing: none; }
+.music:after, .phone:after, .radio:after { content: ''; position: absolute; left: 0; top: 0; width: 800px; height: 480px; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.22) 3px, rgba(0,0,0,0.22) 4px); }
+
+/* shared: the button strip along the top */
+.music .mpresets, .phone .mpresets { height: 38px; border-bottom: 2px solid #1f4a1f; }
+.music .mpresets div, .phone .mpresets div, .radio .rtabs div { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; letter-spacing: 1px; color: #3fae3f; }
+.music .pnum, .phone .pnum, .radio .pnum { border-radius: 0; background: #3fae3f; color: #040a04; font-family: 'PS2P', monospace; font-size: 10px; }
+
+/* ---- Music ---- */
+.music .mbg, .music .mshade { display: none; }
+.music .mart { border-radius: 0; box-shadow: 0 0 0 4px #040a04, 0 0 0 6px #1f4a1f; border: 4px solid #3fae3f; box-sizing: border-box; left: 36px; top: 62px; width: 340px; height: 340px;
+  background-color: #071207;
+  background-image: linear-gradient(45deg, #102a10 25%, transparent 25%, transparent 75%, #102a10 75%), linear-gradient(45deg, #102a10 25%, transparent 25%, transparent 75%, #102a10 75%);
+  background-size: 8px 8px; background-position: 0 0, 4px 4px; }
+.music .mart img { width: 332px; height: 332px; image-rendering: pixelated; -webkit-filter: grayscale(1) sepia(1) hue-rotate(60deg) saturate(3) contrast(1.1); filter: grayscale(1) sepia(1) hue-rotate(60deg) saturate(3) contrast(1.1); }
+.music .msrc { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; }
+.music .mtitle { font-family: 'PS2P', monospace; font-size: 20px; font-weight: 400; line-height: 1.35; max-height: 56px; margin-top: 14px; color: #b8ff9e; text-shadow: 0 0 8px rgba(125,255,106,0.4); }
+.music .martist { font-size: 30px; font-weight: 400; color: #7dff6a; margin-top: 10px; }
+.music .malbum { font-size: 24px; color: #3fae3f; }
+.music .mbar { height: 18px; border-radius: 0; margin-top: 24px; background: repeating-linear-gradient(90deg, #123012 0px, #123012 11px, transparent 11px, transparent 14px); }
+.music .mfill { height: 18px; border-radius: 0; background: repeating-linear-gradient(90deg, #7dff6a 0px, #7dff6a 11px, transparent 11px, transparent 14px); }
+.music .mknob { top: -3px; width: 8px; height: 24px; margin-left: -4px; border-radius: 0; background: #d8ffcc; box-shadow: 0 0 8px #7dff6a; }
+.music.scrubbing .mknob { -webkit-transform: scaleX(1.6); transform: scaleX(1.6); }
+.music .mtimes { font-size: 24px; color: #3fae3f; }
+.music.scrubbing .mtimes span:first-child { color: #d8ffcc; font-size: 24px; font-weight: 400; }
+.music .mbtn { border-radius: 0; width: 64px; height: 56px; background: #071207; border: 4px solid #1f4a1f; box-sizing: border-box; color: #7dff6a; }
+.music .mbtn.mplay { width: 84px; height: 70px; margin: 0 18px; background: #7dff6a; border-color: #d8ffcc; color: #040a04; box-shadow: 0 0 0 4px #040a04, 0 0 0 6px #7dff6a, 0 0 18px rgba(125,255,106,0.45); }
+.music .mflags span { border-radius: 0; font-family: 'PS2P', monospace; font-size: 9px; font-weight: 400; color: #3fae3f; padding: 4px 6px; }
+.music .mflags span:before { content: '\25A1  '; }
+.music .mflags span.on { background: none; color: #b8ff9e; }
+.music .mflags span.on:before { content: '\25A0  '; }
+.music .metitle { font-family: 'PS2P', monospace; font-size: 18px; font-weight: 400; color: #b8ff9e; margin-top: 22px; }
+.music .metext { font-size: 26px; line-height: 1.2; color: #7dff6a; }
+.music .mtoast, .phone .ptoast { border-radius: 0; background: #040a04; border: 2px solid #3fae3f; color: #b8ff9e; font-size: 22px; }
+
+/* ---- Phone ---- */
+.phone .ftitle { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; letter-spacing: 1px; }
+.phone .fcard { border-radius: 0; background: #071207; border: 4px solid #1f4a1f; box-shadow: inset 0 0 0 2px #040a04, inset 0 0 0 4px #123012; -webkit-transition: none; transition: none; }
+.phone .favatar { border-radius: 0; background: #123012 !important; color: #7dff6a; box-shadow: none; border: 4px solid #3fae3f; box-sizing: border-box; font-family: 'PS2P', monospace; font-size: 24px; font-weight: 400; }
+.phone .fname { font-family: 'PS2P', monospace; font-size: 14px; font-weight: 400; line-height: 1.5; color: #b8ff9e; }
+.phone .fgrid.c4 .fname { font-size: 11px; }
+.phone .fsub { font-size: 22px; color: #3fae3f; }
+.phone .fcard.focus { background: #7dff6a; border-color: #d8ffcc; -webkit-transform: none; transform: none; box-shadow: 0 0 0 4px #040a04, 0 0 0 6px #7dff6a, 0 0 18px rgba(125,255,106,0.45); }
+.phone .fcard.focus .fname, .phone .fcard.focus .fsub { color: #040a04; }
+.phone .fcard.focus .favatar { background: #040a04 !important; border-color: #040a04; color: #7dff6a; }
+.phone .fcard.confirm { background: #b8ff9e; border-color: #ffffff; }
+.phone .fcard.confirm .fname, .phone .fcard.confirm .fsub { color: #040a04; }
+.phone .fempty { font-size: 26px; line-height: 1.25; color: #7dff6a; }
+.phone .fempty b { font-family: 'PS2P', monospace; font-size: 16px; font-weight: 400; color: #b8ff9e; margin-bottom: 14px; }
+.phone .fstatus { background: rgba(4,10,4,0.94); }
+.phone .fsicon { border-radius: 0; background: #123012; border: 4px solid #3fae3f; font-family: 'PS2P', monospace; font-size: 36px; font-weight: 400; line-height: 88px; width: 96px; height: 96px; box-sizing: border-box; }
+.phone .fstatus.ok .fsicon { background: #7dff6a; color: #040a04; border-color: #d8ffcc; }
+.phone .fstatus.err .fsicon { background: #040a04; color: #ff6a4a; border-color: #ff6a4a; }
+.phone .fstitle { font-family: 'PS2P', monospace; font-size: 20px; font-weight: 400; color: #b8ff9e; line-height: 1.4; }
+.phone .fstext { font-size: 26px; color: #7dff6a; }
+
+/* ---- Radio ---- (bright green = listen only, amber = ham license needed, red = don't transmit) */
+.radio .rtabs { height: 42px; border-bottom: 2px solid #1f4a1f; }
+.radio .rtabs div { border-bottom: 0; }
+.radio .rtabs div.on { color: #040a04; background: #7dff6a; }
+.radio .rtabs div.on .pnum { background: #040a04; color: #7dff6a; }
+.radio .rkey { font-size: 20px; color: #3fae3f; top: 48px; }
+.radio .rkey i { border-radius: 0; }
+.radio .rkey i.rx { background: #7dff6a; } .radio .rkey i.ham { background: #ffb000; } .radio .rkey i.plain { background: #3fae3f; }
+.radio .rhead2 { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #7dff6a; letter-spacing: 1px; padding-top: 14px; }
+.radio .rrow { border-radius: 0; background: #071207; border-left: 6px solid #1f4a1f; }
+.radio .rrow.rx { border-left-color: #7dff6a; } .radio .rrow.ham { border-left-color: #ffb000; } .radio .rrow.none { border-left-color: #2a5a2a; } .radio .rrow.warn { border-left-color: #ff6a4a; }
+.radio .rrow.plain { border-left-color: #3fae3f; }
+.radio .rrow.note { background: none; border-left-color: transparent; }
+.radio .rrow.note .rmain { font-size: 22px; line-height: 1.15; color: #7dff6a; }
+.radio .rrow.focus { background: #123012; box-shadow: 0 0 0 2px #7dff6a, 0 0 12px rgba(125,255,106,0.35); }
+.radio .rrow.note.focus { background: #0b1a0b; }
+.radio .rmain { font-size: 24px; min-height: 44px; }
+.radio .rch { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; }
+.radio .rname { font-weight: 400; color: #b8ff9e; }
+.radio .rfreq { font-family: 'PS2P', monospace; font-size: 14px; font-weight: 400; color: #7dff6a; width: 190px; }
+.radio .rset { font-size: 22px; color: #7dff6a; }
+.radio .rtag { font-size: 20px; font-weight: 400; color: #3fae3f; }
+.radio .rrow.ham .rtag { color: #ffb000; } .radio .rrow.rx .rtag { color: #7dff6a; }
+.radio .rmore { color: #3fae3f; }
+.radio .rdetail { font-size: 22px; color: #b8ff9e; }
+.radio .rkv span { color: #3fae3f; }
+.radio .rkv b { font-weight: 400; color: #b8ff9e; }
+.radio .rsrc { font-size: 18px; color: #3fae3f; }
+.radio .rhint, .phone .phint { font-family: 'PS2P', monospace; font-size: 9px; color: #3fae3f; letter-spacing: 1px; }
