@@ -215,8 +215,6 @@ const arrows = { up: false, down: false, left: false, right: false }
 let touchTarget: { x: number; y: number } | null = null
 // Press the dial once to start walking, again to stop (holding it still walks while held).
 let autoWalk = false
-let dialDownAt = 0
-let ignoreDialUp = false
 let blockedT = 0
 function stopWalking() { autoWalk = false; heldWalk.dial = heldWalk.key4 = heldWalk.touch = false; touchTarget = null; blockedT = 0 }
 
@@ -357,6 +355,33 @@ let fadeT = 0
 
 // what's in front of Sting that he can use?
 type Target = { kind: 'actor'; a: Actor } | { kind: 'lock' } | { kind: 'sign'; a: Actor }
+// The dial press: use whatever is right in front of Sting, otherwise swing the sword.
+function action() {
+  for (const reach of [9, 14, 19]) {
+    const t = interactAt(hero.x + 5 + DX[hero.dir] * reach, hero.y + 5 + DY[hero.dir] * reach)
+    if (t) {
+      // an opened chest has nothing left in it: swing instead
+      if (t.kind === 'actor' && t.a.k === 'chest' && S.flags['chest:' + t.a.ent!.id]) break
+      interact(t); return
+    }
+  }
+  swing()
+}
+// what the dial press would do right now (for the little prompt above Sting)
+function actionHint(): string {
+  for (const reach of [9, 14, 19]) {
+    const t = interactAt(hero.x + 5 + DX[hero.dir] * reach, hero.y + 5 + DY[hero.dir] * reach)
+    if (!t) continue
+    if (t.kind === 'lock') return S.keys > 0 ? 'UNLOCK' : 'LOCKED'
+    if (t.kind === 'sign') return 'READ'
+    const k = t.a.k
+    if (k === 'chest') return S.flags['chest:' + t.a.ent!.id] ? '' : 'OPEN'
+    if (k === 'shop') return 'BUY'
+    return 'TALK'
+  }
+  return ''
+}
+
 function interactAt(px: number, py: number): Target | null {
   const cx = Math.floor(px / TS), cy = Math.floor(py / TS)
   const ch = tileAt(cx, cy)
@@ -685,6 +710,14 @@ function drawHero() {
   if (d4 === 'up') drawSword()
   g.drawImage(im, x, y)
   if (d4 !== 'up') drawSword()
+  // what a dial press will do, when it's more than a sword swing
+  const hint = mode === 'play' && !dialog.length ? actionHint() : ''
+  if (hint) {
+    g.font = '13px VT323, monospace'; g.textAlign = 'center'
+    const w = g.measureText(hint).width + 8, hx = Math.round(hero.x + 5), hy = Math.round(hero.y) + TOP - 12
+    g.fillStyle = 'rgba(10,6,24,0.8)'; g.fillRect(hx - w / 2, hy - 10, w, 12)
+    g.fillStyle = '#ffe8a0'; g.fillText(hint, hx, hy)
+  }
   // aim marker so you can see where the dial is pointing
   if (!moving && hero.swing <= 0 && mode === 'play' && !dialog.length) {
     const ax = hero.x + 5 + DX[hero.dir] * 15, ay = hero.y + 5 + DY[hero.dir] * 15 + TOP, ang = hero.dir * Math.PI / 4
@@ -825,8 +858,8 @@ function drawHelp() {
   txt('HOW TO PLAY', W / 2, 36, 20, '#ffe8a0', 'center')
   ;[
     'TURN THE DIAL    aim / steer (8 directions)',
-    'PRESS THE DIAL   walk; press again to stop',
-    'BACK             swing your sword',
+    'BACK             walk; press again to stop',
+    'PRESS THE DIAL   talk / open / buy, or swing',
     '1  shoot the bow     2  drink a draught',
     '3  pause and map     TAP  walk to that spot',
     '',
@@ -905,12 +938,9 @@ function press(k: Key) {
   switch (k) {
     case 'cw': hero.dir = (hero.dir + 1) % 8; break
     case 'ccw': hero.dir = (hero.dir + 7) % 8; break
-    case 'select':
-      // tap = start / stop walking; hold = walk while held
-      if (autoWalk) { autoWalk = false; ignoreDialUp = true } else { autoWalk = true; dialDownAt = performance.now(); blockedT = 0 }
-      break
+    case 'select': action(); break // the dial press does whatever fits: talk, open, buy, unlock, or swing
     case 'b4': heldWalk.key4 = true; break
-    case 'back': swing(); break
+    case 'back': autoWalk = !autoWalk; blockedT = 0; heldWalk.touch = false; touchTarget = null; break // Back starts / stops walking
     case 'b1': shoot(); break
     case 'b2': drink(); break
     case 'b3': paused = true; pauseSel = 0; stopWalking(); break
@@ -921,10 +951,7 @@ function press(k: Key) {
   }
 }
 function release(k: Key) {
-  if (k === 'select') {
-    if (ignoreDialUp) ignoreDialUp = false
-    else if (autoWalk && performance.now() - dialDownAt > 400) autoWalk = false // it was a hold
-  }
+  if (k === 'select') { /* press is all that matters */ }
   else if (k === 'b4') heldWalk.key4 = false
   else if (k === 'up') arrows.up = false
   else if (k === 'down') arrows.down = false
@@ -981,7 +1008,7 @@ let touchAt = 0
 function touchDown(x: number, y: number) {
   if (mode === 'title' || mode === 'dead' || mode === 'win' || paused || dialog.length) { press('select'); release('select'); return }
   const p = toPlay(x, y)
-  if (Math.abs(p.x - (hero.x + 5)) < 12 && Math.abs(p.y - (hero.y + 2)) < 14) { swing(); return }
+  if (Math.abs(p.x - (hero.x + 5)) < 12 && Math.abs(p.y - (hero.y + 2)) < 14) { action(); return }
   autoWalk = false
   touchTarget = edgeTarget(p); heldWalk.touch = true; touchAt = performance.now()
 }
