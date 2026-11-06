@@ -206,23 +206,75 @@ const isEnemy = (a: Actor) => !!ENEMY[a.k]
 // ---------------------------------------------------------------- effects
 function puff(x: number, y: number, n: number, col?: string) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2, life: 0, max: 0.35 + Math.random() * 0.2, kind: 'puff', col }) }
 function popText(x: number, y: number, text: string, col = '#ffffff') { parts.push({ x, y, vx: 0, vy: -0.5, life: 0, max: 1, kind: 'text', text, col }) }
-function say(lines: string[], after?: () => void) { dialog = lines.slice(); dialogAfter = after || null; heldWalk.dial = heldWalk.key4 = false }
+function say(lines: string[], after?: () => void) { dialog = lines.slice(); dialogAfter = after || null; stopWalking() }
 function showBanner(t: string) { banner = t; bannerT = 2.2 }
 
 // ---------------------------------------------------------------- hero
 const heldWalk = { dial: false, key4: false, touch: false }
 const arrows = { up: false, down: false, left: false, right: false }
 let touchTarget: { x: number; y: number } | null = null
+// Press the dial once to start walking, again to stop (holding it still walks while held).
+let autoWalk = false
+let dialDownAt = 0
+let ignoreDialUp = false
+let blockedT = 0
+function stopWalking() { autoWalk = false; heldWalk.dial = heldWalk.key4 = heldWalk.touch = false; touchTarget = null; blockedT = 0 }
+
+// Exit help: walking toward the side of a screen that has a way out, within a few tiles of that edge,
+// Sting finds the opening himself (shortest path over walkable tiles) and walks out through it.
+function exitAssist(dirx: number, diry: number): { x: number; y: number } | null {
+  const cx = hero.x + 5, cy = hero.y + 5
+  const sides: [Dirn, number][] = [['e', W - cx], ['w', cx], ['s', PH - cy], ['n', cy]]
+  for (const [d, dist] of sides) {
+    const toward = d === 'e' ? dirx : d === 'w' ? -dirx : d === 's' ? diry : -diry
+    if (toward < 0.5 || dist > 5 * TS || !scr.links[d]) continue
+    const sx = Math.floor(cx / TS), sy = Math.floor(cy / TS)
+    const onEdge = (x: number, y: number) => (d === 'e' ? x === COLS - 1 : d === 'w' ? x === 0 : d === 's' ? y === ROWS - 1 : y === 0)
+    // already in the opening: just keep going out
+    if (onEdge(sx, sy) && walkable(tileAt(sx, sy))) return { x: d === 'e' ? 1 : d === 'w' ? -1 : 0, y: d === 's' ? 1 : d === 'n' ? -1 : 0 }
+    const prev: { [k: number]: number } = {}
+    const start = sy * COLS + sx
+    prev[start] = -1
+    const q = [start]
+    let goal = -1
+    while (q.length && goal < 0) {
+      const i = q.shift()!
+      const x = i % COLS, y = (i - x) / COLS
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + ox, ny = y + oy
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue
+        const j = ny * COLS + nx
+        if (j in prev || !walkable(tileAt(nx, ny))) continue
+        if (Math.abs(nx - sx) + Math.abs(ny - sy) > 14) continue
+        prev[j] = i
+        if (onEdge(nx, ny)) { goal = j; break }
+        q.push(j)
+      }
+    }
+    if (goal < 0) continue
+    // walk back to the first step
+    let step = goal
+    while (prev[step] !== start && prev[step] !== -1) step = prev[step]
+    const tx = (step % COLS) * TS + 8, ty = Math.floor(step / COLS) * TS + 8
+    const vx = tx - cx, vy = ty - cy, n = Math.sqrt(vx * vx + vy * vy) || 1
+    return { x: vx / n, y: vy / n }
+  }
+  return null
+}
 
 function heroUpdate() {
   // aim from the arrow keys (desktop) or the touch point
   const ax = (arrows.right ? 1 : 0) - (arrows.left ? 1 : 0), ay = (arrows.down ? 1 : 0) - (arrows.up ? 1 : 0)
-  let walking = heldWalk.dial || heldWalk.key4
+  let walking = autoWalk || heldWalk.dial || heldWalk.key4
+  let mvx = 0, mvy = 0
   if (ax || ay) { hero.dir = (Math.round(Math.atan2(ay, ax) / (Math.PI / 4)) + 8) % 8; walking = true }
   if (heldWalk.touch && touchTarget) {
     const dx = touchTarget.x - (hero.x + 5), dy = touchTarget.y - (hero.y + 5)
-    if (dx * dx + dy * dy > 64) { hero.dir = (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8; walking = true }
+    if (dx * dx + dy * dy > 36) { const n = Math.sqrt(dx * dx + dy * dy); mvx = dx / n; mvy = dy / n; hero.dir = (Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8; walking = true }
+    else { heldWalk.touch = false; touchTarget = null } // arrived
   }
+  if (walking && !mvx && !mvy) { mvx = DX[hero.dir]; mvy = DY[hero.dir] }
+  if (walking) { const a = exitAssist(mvx, mvy); if (a) { mvx = a.x; mvy = a.y } }
   if (hero.swing > 0) walking = false
   if (hero.inv > 0) hero.inv--
   unstick(hero)
@@ -230,12 +282,15 @@ function heroUpdate() {
 
   if (walking) {
     const sp = 1.35
-    const dx = DX[hero.dir] * sp, dy = DY[hero.dir] * sp
+    const dx = Math.abs(mvx) < 0.01 ? 0 : mvx * sp, dy = Math.abs(mvy) < 0.01 ? 0 : mvy * sp
+    const bx = hero.x, by = hero.y
     const r = moveBody(hero, dx, dy, walkable, true)
     // corner help: slide around corners and line up with doorways
     if (r.hitX && !dy) for (const n of [1, -1]) { const t = { x: hero.x + dx, y: hero.y + n * 5, w: 10, h: 10 }; if (!blocked(t, walkable) && !blocked({ x: hero.x, y: hero.y + n, w: 10, h: 10 }, walkable)) { hero.y += n * 0.8; break } }
     if (r.hitY && !dx) for (const n of [1, -1]) { const t = { x: hero.x + n * 5, y: hero.y + dy, w: 10, h: 10 }; if (!blocked(t, walkable) && !blocked({ x: hero.x + n, y: hero.y, w: 10, h: 10 }, walkable)) { hero.x += n * 0.8; break } }
     hero.walkT += 1
+    // auto-walk stops by itself when Sting is stuck against something for a moment
+    if (Math.abs(hero.x - bx) + Math.abs(hero.y - by) < 0.2) { if (++blockedT > 40) { autoWalk = false; heldWalk.touch = false; blockedT = 0 } } else blockedT = 0
     // pushing against something you can talk to / open
     const px = hero.x + 5 + DX[hero.dir] * 9, py = hero.y + 5 + DY[hero.dir] * 9
     const target = interactAt(px, py)
@@ -285,11 +340,13 @@ function tryLeave(d: Dirn) {
   if (d === 'w') hero.x = W - 12; else if (d === 'e') hero.x = 2; else if (d === 'n') hero.y = PH - 12; else hero.y = 2
   const oldArea = scr.area
   enterScreen(to)
+  autoWalk = false; heldWalk.touch = false; touchTarget = null
   slide = { from, d, t: 0 }
   mode = 'slide'
   if (scr.area !== oldArea) showBanner(scr.area)
 }
 function warpTo(id: string, tx: number, ty: number) {
+  stopWalking()
   hero.x = tx * TS + 3; hero.y = ty * TS + 3; hero.warpArmed = false
   const oldArea = scr.area
   enterScreen(id)
@@ -616,7 +673,7 @@ function drawHero() {
   if (hero.inv > 0 && Math.floor(hero.inv / 4) % 2 === 0 && mode === 'play') return
   const d4 = dir4(hero.dir)
   const set = HERO[d4]
-  const moving = heldWalk.dial || heldWalk.key4 || heldWalk.touch || arrows.up || arrows.down || arrows.left || arrows.right
+  const moving = autoWalk || heldWalk.dial || heldWalk.key4 || heldWalk.touch || arrows.up || arrows.down || arrows.left || arrows.right
   const im = hero.swing > 0 ? set[2] : set[moving ? Math.floor(hero.walkT / 9) % 2 : 0]
   const x = Math.round(hero.x - 3), y = Math.round(hero.y - 6) + TOP
   const drawSword = () => {
@@ -628,6 +685,14 @@ function drawHero() {
   if (d4 === 'up') drawSword()
   g.drawImage(im, x, y)
   if (d4 !== 'up') drawSword()
+  // aim marker so you can see where the dial is pointing
+  if (!moving && hero.swing <= 0 && mode === 'play' && !dialog.length) {
+    const ax = hero.x + 5 + DX[hero.dir] * 15, ay = hero.y + 5 + DY[hero.dir] * 15 + TOP, ang = hero.dir * Math.PI / 4
+    g.save(); g.translate(Math.round(ax), Math.round(ay)); g.rotate(ang)
+    g.globalAlpha = 0.55 + Math.sin(performance.now() / 200) * 0.25
+    g.fillStyle = '#ffe8a0'; g.beginPath(); g.moveTo(4, 0); g.lineTo(-2, -3.5); g.lineTo(-2, 3.5); g.closePath(); g.fill()
+    g.restore()
+  }
 }
 
 function drawWorld(offX = 0, offY = 0) {
@@ -759,12 +824,13 @@ function drawHelp() {
   g.fillStyle = 'rgba(8,6,18,0.94)'; g.fillRect(16, 14, W - 32, H - 28)
   txt('HOW TO PLAY', W / 2, 36, 20, '#ffe8a0', 'center')
   ;[
-    'TURN THE DIAL    aim Sting (8 directions)',
-    'HOLD THE DIAL    walk (or hold 4)',
+    'TURN THE DIAL    aim / steer (8 directions)',
+    'PRESS THE DIAL   walk; press again to stop',
     'BACK             swing your sword',
     '1  shoot the bow     2  drink a draught',
-    '3  pause and map     TOUCH  walk to finger',
+    '3  pause and map     TAP  walk to that spot',
     '',
+    'Walk toward an edge and Sting finds the exit.',
     'Walk into people, signs and chests to use',
     'them. Cut bushes for silver and hearts.',
     'Find the bow in the Barrow, beat the troll,',
@@ -803,7 +869,7 @@ function begin() {
 }
 
 // ---------------------------------------------------------------- input
-installSleep((asleep) => { if (asleep && mode === 'play') { paused = true; pauseSel = 0 } heldWalk.dial = heldWalk.key4 = heldWalk.touch = false })
+installSleep((asleep) => { if (asleep && mode === 'play') { paused = true; pauseSel = 0 } stopWalking() })
 const env = { hosted: /[?&]from=home(&|$)/.test(location.search) }
 function goHome() { if (env.hosted) location.href = '../../index.html' }
 
@@ -839,12 +905,15 @@ function press(k: Key) {
   switch (k) {
     case 'cw': hero.dir = (hero.dir + 1) % 8; break
     case 'ccw': hero.dir = (hero.dir + 7) % 8; break
-    case 'select': heldWalk.dial = true; break
+    case 'select':
+      // tap = start / stop walking; hold = walk while held
+      if (autoWalk) { autoWalk = false; ignoreDialUp = true } else { autoWalk = true; dialDownAt = performance.now(); blockedT = 0 }
+      break
     case 'b4': heldWalk.key4 = true; break
     case 'back': swing(); break
     case 'b1': shoot(); break
     case 'b2': drink(); break
-    case 'b3': paused = true; pauseSel = 0; heldWalk.dial = heldWalk.key4 = false; break
+    case 'b3': paused = true; pauseSel = 0; stopWalking(); break
     case 'up': arrows.up = true; break
     case 'down': arrows.down = true; break
     case 'left': arrows.left = true; break
@@ -852,7 +921,10 @@ function press(k: Key) {
   }
 }
 function release(k: Key) {
-  if (k === 'select') heldWalk.dial = false
+  if (k === 'select') {
+    if (ignoreDialUp) ignoreDialUp = false
+    else if (autoWalk && performance.now() - dialDownAt > 400) autoWalk = false // it was a hold
+  }
   else if (k === 'b4') heldWalk.key4 = false
   else if (k === 'up') arrows.up = false
   else if (k === 'down') arrows.down = false
@@ -896,18 +968,31 @@ function toPlay(clientX: number, clientY: number) {
   const r = cv.getBoundingClientRect()
   return { x: ((clientX - r.left) / r.width) * W, y: ((clientY - r.top) / r.height) * H - TOP }
 }
+// a tap near an edge that has an exit means "go out that way"
+function edgeTarget(p: { x: number; y: number }) {
+  const m = 44
+  if (p.x > W - m && scr.links.e) p.x = W + 40
+  else if (p.x < m && scr.links.w) p.x = -40
+  else if (p.y > PH - m && scr.links.s) p.y = PH + 40
+  else if (p.y < m && scr.links.n) p.y = -40
+  return p
+}
+let touchAt = 0
 function touchDown(x: number, y: number) {
   if (mode === 'title' || mode === 'dead' || mode === 'win' || paused || dialog.length) { press('select'); release('select'); return }
   const p = toPlay(x, y)
   if (Math.abs(p.x - (hero.x + 5)) < 12 && Math.abs(p.y - (hero.y + 2)) < 14) { swing(); return }
-  touchTarget = p; heldWalk.touch = true
+  autoWalk = false
+  touchTarget = edgeTarget(p); heldWalk.touch = true; touchAt = performance.now()
 }
+// quick tap: Sting walks to that spot on his own. Touch and hold: he follows your finger until you let go.
+function touchUp() { if (performance.now() - touchAt > 350) { heldWalk.touch = false; touchTarget = null } }
 cv.addEventListener('touchstart', (e) => { e.preventDefault(); touchDown(e.touches[0].clientX, e.touches[0].clientY) }, { passive: false } as AddEventListenerOptions)
-cv.addEventListener('touchmove', (e) => { e.preventDefault(); if (heldWalk.touch) touchTarget = toPlay(e.touches[0].clientX, e.touches[0].clientY) }, { passive: false } as AddEventListenerOptions)
-cv.addEventListener('touchend', (e) => { e.preventDefault(); heldWalk.touch = false }, { passive: false } as AddEventListenerOptions)
+cv.addEventListener('touchmove', (e) => { e.preventDefault(); if (heldWalk.touch) touchTarget = edgeTarget(toPlay(e.touches[0].clientX, e.touches[0].clientY)) }, { passive: false } as AddEventListenerOptions)
+cv.addEventListener('touchend', (e) => { e.preventDefault(); touchUp() }, { passive: false } as AddEventListenerOptions)
 cv.addEventListener('mousedown', (e) => touchDown(e.clientX, e.clientY))
-cv.addEventListener('mousemove', (e) => { if (heldWalk.touch) touchTarget = toPlay(e.clientX, e.clientY) })
-cv.addEventListener('mouseup', () => { heldWalk.touch = false })
+cv.addEventListener('mousemove', (e) => { if (heldWalk.touch && e.buttons) touchTarget = edgeTarget(toPlay(e.clientX, e.clientY)) })
+cv.addEventListener('mouseup', () => touchUp())
 document.addEventListener('contextmenu', (e) => e.preventDefault())
 
 // ---------------------------------------------------------------- loop
@@ -938,7 +1023,7 @@ if (FF && document.fonts) {
 ;(window as unknown as { __sting: unknown }).__sting = {
   state: () => ({ mode, screen: scr && scr.id, x: hero.x, y: hero.y, dir: hero.dir, hp: hero.hp, dialog: dialog.slice(), paused, save: S, enemies: actors.filter((a) => a.alive && isEnemy(a)).length }),
   newGame, god: (v: boolean) => { god = v },
-  go: (id: string, tx: number, ty: number) => { hero.x = tx * TS + 3; hero.y = ty * TS + 3; enterScreen(id); mode = 'play' },
+  go: (id: string, tx: number, ty: number) => { stopWalking(); hero.x = tx * TS + 3; hero.y = ty * TS + 3; enterScreen(id); mode = 'play' },
   give: (o: Partial<SaveData>) => Object.assign(S, o),
   steps: (n: number) => { for (let i = 0; i < n; i++) step() },
   press, release, screens: () => SCREENS,
