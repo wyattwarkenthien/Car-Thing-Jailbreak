@@ -194,7 +194,9 @@ function spawn(e: Ent) {
     const boss = e.boss as string | undefined
     if (boss && S.flags['boss:' + boss]) { bossReward(boss, e.x * TS + 8, e.y * TS + 8, true); return }
     const d = ENEMY[e.k]
-    actors.push(Object.assign(base, at(d.w, d.h), { k: e.k, hp: d.hp, dmg: d.dmg, flying: d.flying, boss }))
+    const en = Object.assign(base, at(d.w, d.h), { k: e.k, hp: d.hp, dmg: d.dmg, flying: d.flying, boss })
+    if (!d.flying) unstick(en, walkable, false)
+    actors.push(en)
   } else if (e.k === 'npc' || e.k === 'shop' || e.k === 'chest') {
     actors.push(Object.assign(base, { x: e.x * TS, y: e.y * TS + 2, w: 16, h: 14, k: e.k, solid: true }))
   } else if (e.k === 'warp' || e.k === 'sign') {
@@ -313,23 +315,33 @@ function heroUpdate() {
   if (!onWarp) hero.warpArmed = true
 
   // pickups
-  for (const p of picks) if (overlap(hero, p)) { collect(p); p.t = -1 }
+  // pickups close by drift to Sting, so nothing is ever out of reach
+  const hx = hero.x + 5, hy = hero.y + 5
+  for (const p of picks) {
+    const dx = hx - (p.x + p.w / 2), dy = hy - (p.y + p.h / 2), d = Math.sqrt(dx * dx + dy * dy)
+    if (d < 40 && d > 0.5) { const sp = Math.min(d, 2.4); p.x += (dx / d) * sp; p.y += (dy / d) * sp }
+  }
+  for (const p of picks) if (overlap({ x: hero.x - 3, y: hero.y - 3, w: 16, h: 16 }, p)) { collect(p); p.t = -1 }
   picks = picks.filter((p) => p.t >= 0)
 }
 
 // safety net: if Sting is ever inside something solid, move him to the nearest open spot
-function unstick(b: Body) {
-  if (!blocked(b, walkable) && !solidActorAt(b)) return
+// (also used for monsters, and for drops that land in water or rocks)
+function unstick(b: Body, pass: (ch: string) => boolean = walkable, actorsToo = true) {
+  const bad = () => blocked(b, pass) || (actorsToo && solidActorAt(b, b as Actor))
+  if (!bad()) return
   const x0 = b.x, y0 = b.y
-  for (let r = 2; r <= 96; r += 2) {
+  for (let r = 2; r <= 128; r += 2) {
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2
       b.x = x0 + Math.cos(a) * r; b.y = y0 + Math.sin(a) * r
-      if (b.x >= 0 && b.y >= 0 && b.x <= W - b.w && b.y <= PH - b.h && !blocked(b, walkable) && !solidActorAt(b)) return
+      if (b.x >= 0 && b.y >= 0 && b.x <= W - b.w && b.y <= PH - b.h && !bad()) return
     }
   }
   b.x = x0; b.y = y0
 }
+// drops always land somewhere Sting can walk to
+function addPick(p: Pick) { unstick(p, walkable, true); picks.push(p) }
 
 function tryLeave(d: Dirn) {
   const to = scr.links[d]
@@ -488,18 +500,18 @@ function damage(a: Actor, n: number, fx: number, fy: number) {
 }
 function bossReward(boss: string, x: number, y: number, already: boolean) {
   if (boss === 'ash') {
-    if (!S.flags.won) picks.push({ k: 'dawn', x: x - 7, y: y - 8, w: 14, h: 16, t: 0, amt: 1, float: true })
+    if (!S.flags.won) addPick({ k: 'dawn', x: x - 7, y: y - 8, w: 14, h: 16, t: 0, amt: 1, float: true })
     return
   }
-  if (!S.flags['hc:' + boss]) picks.push({ k: 'container', x: x - 7, y: y - 6, w: 14, h: 13, t: 0, amt: 1, float: true })
+  if (!S.flags['hc:' + boss]) addPick({ k: 'container', x: x - 7, y: y - 6, w: 14, h: 13, t: 0, amt: 1, float: true })
   if (!already) showBanner(boss === 'troll' ? 'The troll is beaten!' : 'The Barrow King falls!')
   void already
 }
 function maybeDrop(x: number, y: number, mult: number) {
   const r = Math.random()
-  if (r < 0.14 * mult) picks.push({ k: 'heart', x, y, w: 9, h: 8, t: 0, amt: 2 })
-  else if (r < 0.44 * mult) picks.push({ k: 'coin', x, y, w: 8, h: 8, t: 0, amt: Math.random() < 0.2 ? 5 : 1 })
-  else if (S.bow && r < 0.56 * mult) picks.push({ k: 'arrows', x, y, w: 14, h: 5, t: 0, amt: 4 })
+  if (r < 0.14 * mult) addPick({ k: 'heart', x, y, w: 9, h: 8, t: 0, amt: 2 })
+  else if (r < 0.44 * mult) addPick({ k: 'coin', x, y, w: 8, h: 8, t: 0, amt: Math.random() < 0.2 ? 5 : 1 })
+  else if (S.bow && r < 0.56 * mult) addPick({ k: 'arrows', x, y, w: 14, h: 5, t: 0, amt: 4 })
 }
 function collect(p: Pick) {
   if (p.k === 'heart') hero.hp = Math.min(S.maxHp, hero.hp + p.amt)
@@ -526,6 +538,7 @@ function enemyUpdate(a: Actor) {
   a.t += 1 / 60
   if (a.inv > 0) a.inv--
   const pass = a.flying ? flyable : walkable
+  if (!a.flying) unstick(a, walkable, false) // never left inside rocks, trees or water
   if (a.kt > 0) { a.kt--; moveBody(a, a.kx, a.ky, pass); return }
   const { dx, dy, d } = distTo(a)
   const toward = (sp: number) => { const r = moveBody(a, (dx / d) * sp, (dy / d) * sp, pass); if (r.hitX || r.hitY) a.st = 0; a.vx = dx / d }
@@ -1054,6 +1067,9 @@ if (FF && document.fonts) {
   give: (o: Partial<SaveData>) => Object.assign(S, o),
   steps: (n: number) => { for (let i = 0; i < n; i++) step() },
   press, release, screens: () => SCREENS,
+  dropAt: (x: number, y: number) => { addPick({ k: 'coin', x, y, w: 8, h: 8, t: 0, amt: 1 }); const p = picks[picks.length - 1]; return { x: p.x, y: p.y, blocked: blocked(p, walkable) } },
+  stuckEnemies: () => actors.filter((a) => a.alive && isEnemy(a) && !a.flying && blocked(a, walkable)).length,
+  enemyCount: () => actors.filter((a) => a.alive && isEnemy(a)).length,
   knock: (kx: number, ky: number) => { hero.kx = kx; hero.ky = ky; hero.kt = 10 },
   stuck: () => blocked(hero, walkable), killAll: () => actors.forEach((a) => { if (isEnemy(a)) damage(a, 99, a.x, a.y - 10) }),
 }
