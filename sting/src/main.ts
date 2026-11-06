@@ -48,8 +48,10 @@ interface SaveData {
   v: number; screen: string; x: number; y: number; maxHp: number
   bow: boolean; arrows: number; potions: number; coins: number; keys: number
   flags: { [k: string]: boolean }; visited: { [k: string]: boolean }; deaths: number
+  // world memory: when each monster was beaten / each bush was cut (in seconds of play time)
+  kills: { [screen: string]: { [ent: string]: number } }; cut: { [screen: string]: { [tile: string]: number } }; playT: number
 }
-const fresh = (): SaveData => ({ v: 1, screen: START.screen, x: START.x, y: START.y, maxHp: 6, bow: false, arrows: 0, potions: 0, coins: 0, keys: 0, flags: {}, visited: {}, deaths: 0 })
+const fresh = (): SaveData => ({ v: 1, screen: START.screen, x: START.x, y: START.y, maxHp: 6, bow: false, arrows: 0, potions: 0, coins: 0, keys: 0, flags: {}, visited: {}, deaths: 0, kills: {}, cut: {}, playT: 0 })
 let S: SaveData = fresh()
 function loadSave(): SaveData | null {
   try { const s = JSON.parse(localStorage.getItem('sting_save') || 'null'); return s && s.v === 1 ? s : null } catch (e) { return null }
@@ -172,11 +174,24 @@ function buildBg() {
   }
 }
 
+// How long the world remembers. Dungeon monsters stay beaten for good; out in the open,
+// monsters and bushes come back after a while so there's always silver and hearts to find.
+const REGROW = 300 // seconds of play
+const isDungeon = (id: string) => id[0] === 'b' || id[0] === 'k'
+const remembered = (t: number | undefined, id: string) => t !== undefined && (isDungeon(id) || S.playT - t < REGROW)
+const leftBehind: { [screen: string]: Pick[] } = {} // drops still on the ground when you walked away
+
 function enterScreen(id: string) {
+  // remember drops lying on the screen we're leaving
+  if (scr && scr.id !== id) leftBehind[scr.id] = picks.filter((p) => !p.float)
   scr = SCREENS[id]
   grid = scr.grid.map((r) => r.split(''))
-  actors = []; shots = []; picks = []; parts = []
-  scr.ents.forEach(spawn)
+  const cut = S.cut[id] || {}
+  for (const k in cut) if (remembered(cut[k], id)) { const xy = k.split(','); grid[+xy[1]][+xy[0]] = scr.theme === 'dark' ? 'd' : '.' }
+  actors = []; shots = []; picks = (leftBehind[id] || []).map((p) => Object.assign(p, { t: Math.min(p.t, 3) })); parts = []
+  delete leftBehind[id]
+  const kills = S.kills[id] || {}
+  scr.ents.forEach((e, i) => { if (!(ENEMY[e.k] && !e.boss && remembered(kills[i], id))) spawn(e) })
   buildBg()
   if (!S.visited[id]) { S.visited[id] = true }
   if (scr.checkpoint) { S.screen = id; S.x = Math.floor((hero.x + 5) / TS); S.y = Math.floor((hero.y + 5) / TS); persist() }
@@ -462,6 +477,7 @@ function swordHits() {
     const tx = Math.floor((cx + ox) / TS), ty = Math.floor((cy + oy) / TS)
     if (tileAt(tx, ty) === 'B') {
       grid[ty][tx] = scr.theme === 'dark' ? 'd' : '.'
+      ;(S.cut[scr.id] = S.cut[scr.id] || {})[tx + ',' + ty] = S.playT
       paintTile(tx, ty)
       for (let i = 0; i < 6; i++) parts.push({ x: tx * TS + 8, y: ty * TS + 8, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, life: 0, max: 0.5, kind: 'leaf', col: '#4aa83a' })
       maybeDrop(tx * TS + 4, ty * TS + 4, 0.5)
@@ -491,6 +507,7 @@ function damage(a: Actor, n: number, fx: number, fy: number) {
   const dx = a.x + a.w / 2 - fx, dy = a.y + a.h / 2 - fy, d = Math.sqrt(dx * dx + dy * dy) || 1
   a.kx = (dx / d) * (big ? 1 : 3); a.ky = (dy / d) * (big ? 1 : 3); a.kt = big ? 4 : 9
   if (a.hp <= 0) {
+    if (a.ent && !a.boss) { const i = scr.ents.indexOf(a.ent); if (i >= 0) { (S.kills[scr.id] = S.kills[scr.id] || {})[i] = S.playT; persist() } }
     a.alive = false
     puff(a.x + a.w / 2, a.y + a.h / 2, big ? 16 : 7)
     if (a.boss) { S.flags['boss:' + a.boss] = true; persist(); bossReward(a.boss, a.x + a.w / 2, a.y + a.h / 2, false) }
@@ -640,6 +657,7 @@ function step() {
     return
   }
   if (mode !== 'play' || dialog.length) return
+  S.playT += dt
   // animated tiles
   const f = Math.floor(performance.now() / 420) % 2
   if (f !== animFrame) { animFrame = f; animTiles.forEach(([x, y]) => paintTile(x, y)) }
@@ -906,6 +924,9 @@ function render() {
 // ---------------------------------------------------------------- game flow
 function newGame() { S = fresh(); persist(); begin() }
 function begin() {
+  // older saves don't have world memory yet
+  S.kills = S.kills || {}; S.cut = S.cut || {}; S.playT = S.playT || 0
+  for (const k in leftBehind) delete leftBehind[k]
   hero.hp = S.maxHp; hero.inv = 0; hero.kt = 0; hero.swing = 0; hero.dir = 2; hero.warpArmed = false
   hero.x = S.x * TS + 3; hero.y = S.y * TS + 3
   mode = 'play'; modeT = 0; paused = false
@@ -1069,6 +1090,9 @@ if (FF && document.fonts) {
   press, release, screens: () => SCREENS,
   dropAt: (x: number, y: number) => { addPick({ k: 'coin', x, y, w: 8, h: 8, t: 0, amt: 1 }); const p = picks[picks.length - 1]; return { x: p.x, y: p.y, blocked: blocked(p, walkable) } },
   stuckEnemies: () => actors.filter((a) => a.alive && isEnemy(a) && !a.flying && blocked(a, walkable)).length,
+  cutBush: (x: number, y: number) => { grid[y][x] = '.'; (S.cut[scr.id] = S.cut[scr.id] || {})[x + ',' + y] = S.playT },
+  tile: (x: number, y: number) => grid[y][x],
+  picks: () => picks.length,
   enemyCount: () => actors.filter((a) => a.alive && isEnemy(a)).length,
   knock: (kx: number, ky: number) => { hero.kx = kx; hero.ky = ky; hero.kt = 10 },
   stuck: () => blocked(hero, walkable), killAll: () => actors.forEach((a) => { if (isEnemy(a)) damage(a, 99, a.x, a.y - 10) }),
