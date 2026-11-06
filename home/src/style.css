@@ -306,3 +306,74 @@ body.launching .grid .tile:not(.launch), body.launching .widget, body.launching 
 .radio .rkv b { font-weight: 400; color: #b8ff9e; }
 .radio .rsrc { font-size: 18px; color: #3fae3f; }
 .radio .rhint, .phone .phint { font-family: 'PS2P', monospace; font-size: 9px; color: #3fae3f; letter-spacing: 1px; }
+
+
+/* ================================================================
+   8-bit green theme: home screen, Settings / Bluetooth panels, pairing prompt
+   ================================================================ */
+#screen { background: #040a04; color: #7dff6a; font-family: 'VT323', monospace; -webkit-font-smoothing: none; }
+#screen:after { content: ''; position: absolute; left: 0; top: 0; width: 800px; height: 480px; pointer-events: none; z-index: 50;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.22) 3px, rgba(0,0,0,0.22) 4px); }
+.hills { display: none; }
+
+/* button strip */
+.presets { height: 38px; border-bottom: 2px solid #1f4a1f; }
+.preset { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; letter-spacing: 1px; color: #3fae3f; }
+.pnum { border-radius: 0; background: #3fae3f; color: #040a04; font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; }
+
+/* clock + calendar */
+.widget { border-radius: 0; background: none; border: 0; box-shadow: none; padding: 20px 4px; }
+.time { font-family: 'PS2P', monospace; font-size: 50px; font-weight: 400; letter-spacing: 0; color: #b8ff9e; text-shadow: 0 0 8px rgba(125,255,106,0.45); }
+.ampm { font-family: 'PS2P', monospace; font-size: 14px; font-weight: 400; color: #3fae3f; margin-left: 8px; }
+.date { margin-top: 16px; font-family: 'PS2P', monospace; font-size: 12px; letter-spacing: 1px; color: #7dff6a; }
+.wdiv { height: 0; background: none; border-top: 2px dashed #1f4a1f; margin: 22px 0 18px; }
+.wlabel { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; letter-spacing: 1px; text-transform: uppercase; }
+.wbig { font-size: 34px; font-weight: 400; color: #b8ff9e; }
+.wsmall { font-size: 22px; line-height: 1.15; color: #7dff6a; }
+.cev { padding-left: 10px; border-left: 4px solid #1f4a1f; margin-top: 10px; }
+.cev.now { border-left-color: #7dff6a; }
+.cwhen { font-size: 20px; font-weight: 400; color: #3fae3f; }
+.cev.now .cwhen { color: #7dff6a; }
+.ctitle { font-size: 24px; font-weight: 400; color: #b8ff9e; }
+.cstale { font-size: 18px; color: #3fae3f; }
+
+/* app tiles */
+.tile { height: 176px; }
+.icon { margin-top: 12px; border-radius: 0; color: #7dff6a; background: #071207; border: 4px solid #1f4a1f; box-sizing: border-box;
+  box-shadow: inset 0 0 0 2px #040a04, inset 0 0 0 4px #123012; -webkit-transition: none; transition: none; }
+.label { margin-top: 14px; font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; letter-spacing: 1px; color: #3fae3f; text-shadow: none; text-transform: uppercase; }
+.tile.focus .icon { -webkit-transform: none; transform: none; color: #040a04; background: #7dff6a; border-color: #d8ffcc;
+  box-shadow: 0 0 0 4px #040a04, 0 0 0 6px #7dff6a, 0 0 18px rgba(125,255,106,0.5); }
+.tile.focus .label { color: #b8ff9e; }
+.tile.focus .label:before { content: '\25B6 '; }
+.tile.launch .icon { -webkit-transform: scale(1.4); transform: scale(1.4); }
+.dot { border-radius: 0; background: #1f4a1f; }
+.dot.on { background: #7dff6a; }
+
+/* Settings / Bluetooth / app info panels */
+.panel { background: #040a04; color: #7dff6a; font-family: 'VT323', monospace; }
+.pback { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; }
+.pname { font-family: 'PS2P', monospace; font-size: 16px; font-weight: 400; color: #b8ff9e; }
+.pstatus { border-radius: 0; font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #040a04; background: #7dff6a; }
+.ptext p { font-size: 26px; line-height: 1.15; color: #7dff6a; }
+.phint { font-family: 'PS2P', monospace; font-size: 9px; color: #3fae3f; letter-spacing: 1px; }
+.rows { border-radius: 0; background: #071207; border: 2px solid #1f4a1f; }
+.psub { font-size: 22px; color: #3fae3f; }
+.rhead { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; letter-spacing: 1px; }
+.rnote { font-size: 22px; line-height: 1.15; color: #7dff6a; }
+.row { font-size: 26px; height: 56px; border-bottom: 2px solid #102a10; color: #b8ff9e; }
+.row.focus { background: #7dff6a; color: #040a04; box-shadow: none; }
+.row.focus .rval, .row.focus .rlabel { color: #040a04 !important; }
+.row.action .rlabel { color: #d8ffcc; }
+.row.danger .rlabel { color: #ff6a4a; }
+.rval { color: #3fae3f; }
+.ptoast { border-radius: 0; background: #040a04; border: 2px solid #3fae3f; color: #b8ff9e; font-size: 22px; }
+
+/* pairing prompt */
+.prompt { background: rgba(4,10,4,0.9); }
+.qtitle { font-family: 'PS2P', monospace; font-size: 16px; font-weight: 400; color: #b8ff9e; }
+.qcode { font-family: 'PS2P', monospace; font-size: 48px; font-weight: 400; color: #7dff6a; text-shadow: 0 0 10px rgba(125,255,106,0.5); }
+.qtext { font-size: 24px; line-height: 1.15; color: #7dff6a; }
+.qkeys { font-family: 'PS2P', monospace; font-size: 10px; font-weight: 400; color: #3fae3f; }
+.qyes { color: #b8ff9e; }
+.qcard { border-radius: 0; background: #071207; border: 4px solid #3fae3f; box-shadow: 0 0 0 4px #040a04, 0 0 0 6px #1f4a1f; }
