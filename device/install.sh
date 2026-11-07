@@ -32,6 +32,7 @@ echo "4/5 Setting the home screen as the start page..."
 dev "sed -i 's#--app=file:///[^ ]*#--app=file://$TARGET/index.html#' /etc/supervisord.conf"
 dev 'grep -o "\-\-app=[^ ]*" /etc/supervisord.conf'
 dev 'sync; mount -o remount,ro / 2>/dev/null || true'
+bash "$DIR/spotify-off.sh" >/dev/null 2>&1 || true   # turn off Spotify's original app (frees the mic and memory)
 
 echo "5/5 Restarting the Car Thing..."
 dev 'reboot' || true

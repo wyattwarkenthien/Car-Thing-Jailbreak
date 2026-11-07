@@ -8,4 +8,5 @@ ADB=/Applications/DeskThing.app/Contents/Resources/mac/adb
   "$ADB" shell "rm -rf $TARGET" &&
   "$ADB" push "$DIR/home" "$TARGET" >/dev/null &&
   "$ADB" shell 'sync; mount -o remount,ro / ; supervisorctl restart bthelper 2>/dev/null; supervisorctl restart chromium'
+bash "$DIR/spotify-off.sh" >/dev/null 2>&1 || true   # keep Spotify's original app off (frees the mic and memory)
 echo "Updated."

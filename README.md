@@ -31,6 +31,7 @@ The names in the Phone screenshot are made-up stand-ins.
 - **Phone.** A "stream deck" of favorite contacts. Pick one and press twice, and your iPhone dials. The call stays on the phone.
 - **Calendar.** Your next events under the clock ("Now · until 1:00 PM", then what's next, then tomorrow), synced from Outlook, Google or iCloud by a small job on your Mac.
 - **Sleep button.** The top-right button turns the screen and backlight off, and any touch wakes it.
+- **A microphone for your Mac.** The Car Thing's four-mic array streams to your Mac over USB as a microphone, for dictation and speech-to-text in Claude and other apps (see below).
 - **Bluetooth that works.** A fix for the Car Thing's Bluetooth chip, which doesn't come up after the jailbreak, plus a pairing screen with an on-screen passkey.
 
 ## What you need
@@ -64,7 +65,7 @@ Plug the Car Thing in **normally** (no buttons held), wait for it to finish boot
 bash install.sh
 ```
 
-This backs up the original startup config (first run only), copies the home screen and apps to the Car Thing, points its browser at them, and reboots into the home screen.
+This backs up the original startup config (first run only), copies the home screen and apps to the Car Thing, points its browser at them, turns off Spotify's original app (see below), and reboots into the home screen.
 
 ### 4. Turn on Bluetooth (for Music and Phone)
 
@@ -129,6 +130,18 @@ bash mac/music/install-music.sh
 
 This installs a small background job on your Mac. It talks to the Car Thing over the USB cable rather than Bluetooth, because pairing a Mac to the Car Thing over Bluetooth would send the Mac's sound to the Car Thing, which has no speaker. The first time it runs, macOS will ask whether Terminal and then `python3` may control Music or Spotify. Click OK both times. If you missed the prompts, turn them on in **System Settings › Privacy & Security › Automation**. Undo with `bash mac/music/uninstall-music.sh`.
 
+## Use it as a Mac microphone
+
+The Car Thing has four microphones along its top edge. This streams them to your Mac over the USB cable so you can pick the Car Thing as your microphone for dictation and speech-to-text, in Claude or any other app. Close up or from across a desk, speech comes through clearly. It isn't meant for calls: there's no echo cancellation and about a quarter second of delay.
+
+```bash
+bash mac/mic/install-mic.sh
+```
+
+This needs [Homebrew](https://brew.sh). It installs two free tools, **BlackHole 2ch** (a virtual audio device that macOS lists as a microphone; it asks for your Mac password) and **sox** (mixes the four mics into one, filters out fan and heating rumble, and boosts the level), then starts a small background job. Then choose **System Settings › Sound › Input › BlackHole 2ch**.
+
+How it works: the job runs `arecord` on the Car Thing in the mic's native format (4 channels, 48 kHz, 32-bit) and reads it over `adb exec-out`, so the connection only ever goes from the Mac to the Car Thing. Too quiet or too loud? Change `CTMIC_GAIN` (in dB, default 24) in `~/Library/LaunchAgents/us.warkenthien.carthing-mic.plist` and run the installer again. Undo with `bash mac/mic/uninstall-mic.sh`.
+
 ## Make the Radio guide your own
 
 The Radio app is generated from `home/tools/UV-5R_Fargo_Guide.xlsx`. To use your own area, edit the workbook (same sheet and column layout), then run:
@@ -148,6 +161,8 @@ After pulling new changes, or editing `home/favorites.json`, run:
 bash update.sh
 ```
 
+`update.sh` also keeps Spotify's original app turned off. That app (the `superbird` service) still runs in the background after the jailbreak: it holds the microphone open listening for "Hey Spotify," uses memory, and can interfere with Bluetooth. Nothing here needs it. To turn it back on, run `bash spotify-off.sh --undo`.
+
 To change the code itself, rebuild first (needs Node 18+). Run `bash build.sh` from the repo root, then `bash device/update.sh`.
 
 ## Troubleshooting
@@ -156,7 +171,8 @@ To change the code itself, rebuild first (needs Node 18+). Run `bash build.sh` f
 - **Stuck on the old DeskThing screen.** Give it a minute after an update. If it's still stuck, run `bash ../tools/check-browser.sh`, which reads the browser's logs and restarts it.
 - **Clock shows --:-- or the wrong time.** The Car Thing lost power and forgot the time. Plug it into your Mac (with the calendar/clock job installed it fixes itself within 5 minutes, or run `sync-time.sh`), and check **Settings › Time zone**.
 - **Bluetooth not working.** Run `bash ../tools/check-bluetooth.sh` for a read-only report. If the chip didn't wake at boot, re-run `install-bluetooth.sh`.
-- **iPhone keeps connecting and disconnecting.** The original Spotify app still runs in the background and can interfere. Unplug and replug the Car Thing, then re-run `install-bluetooth.sh`.
+- **iPhone keeps connecting and disconnecting.** Make sure Spotify's original app is off (`bash spotify-off.sh`), unplug and replug the Car Thing, then re-run `install-bluetooth.sh`.
+- **Mic is silent.** Check `~/Library/Application Support/carthing-mic/mic.log` on your Mac. "Device or resource busy" means something else on the Car Thing has the mic; `bash spotify-off.sh` frees it.
 - **General health check.** `bash ../tools/check.sh` shows what the Car Thing boots into, what's installed, and its clock next to your Mac's.
 
 The `tools/` scripts only read from the device, except `check-browser.sh`, which restarts the browser once.
@@ -183,7 +199,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 
 | Path | What it is |
 |---|---|
-| `device/` | **Start here.** Install, update, restore, Bluetooth and clock scripts, plus the built files that go on the Car Thing (`device/home/`). |
+| `device/` | **Start here.** Install, update, restore, Bluetooth, clock and Spotify-off scripts, plus the built files that go on the Car Thing (`device/home/`). |
 | `home/` | Home screen source: TypeScript UI (`src/`) and the on-device Bluetooth helper (`bt/`). |
 | `mac/calendar/` | Runs on the Mac: syncs your calendar (.ics) to the Car Thing every 5 minutes. |
 | `shared/` | Code shared by the home screen and games (screen sleep). |
@@ -191,6 +207,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 | `sting/` | The Legend of Sting source: engine in `src/main.ts`, every screen and dungeon room in `src/world.ts`, pixel art drawn in code in `src/art.ts`. |
 | `neontrail/` | Neon Trail source: arena, AI riders (flood-fill space checks) and incremental neon drawing in `src/main.ts`. |
 | `novastrike/` | Nova Strike source: waves, formation and dive paths, boss in `src/main.ts`; pixel art in `src/art.ts`. |
+| `mac/mic/` | Mac job that streams the Car Thing's microphones into BlackHole, so the Mac can use it as a microphone. |
 | `mac/music/` | Mac job that reads Music/Spotify with AppleScript and relays it to the Car Thing over `adb forward`. |
 | `foxglen/` | Foxglen source: game in `src/main.ts`, levels built with a small builder in `src/levels.ts`, pixel art drawn in code in `src/art.ts`. |
 | `racer/` | Apex '82 source: engine and race in `src/main.ts`, procedurally drawn sprites in `src/art.ts`. |
