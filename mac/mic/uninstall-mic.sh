@@ -8,5 +8,6 @@ rm -f "$PLIST"
 rm -rf "$HOME/Library/Application Support/carthing-mic"
 ADB=/Applications/DeskThing.app/Contents/Resources/mac/adb
 [ -x "$ADB" ] || ADB="$(command -v adb)"
-"$ADB" shell 'killall arecord' >/dev/null 2>&1 || true
+# The Car Thing's ctmic service stays; it only opens the mic while a Mac is connected. restore.sh removes it.
+"$ADB" shell 'killall arecord' </dev/null >/dev/null 2>&1 || true
 echo "Removed. Switch your input back in System Settings > Sound > Input."
