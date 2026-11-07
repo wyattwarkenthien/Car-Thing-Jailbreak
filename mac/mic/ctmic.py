@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Runs ON THE CAR THING as the supervisord service "ctmic" (installed by mac/mic/install-mic.sh).
 
-Serves the raw microphone stream to the Mac. Listens on 127.0.0.1:8739 (the Mac reaches it with
-`adb forward`, so the Car Thing never connects out), and for each connection runs arecord in the mic's
-own conversion layer (plughw) to send one mixed channel at 16 kHz, 16-bit: plenty for speech, and about
-24x less data over USB than the raw 4-channel, 48 kHz, 32-bit stream (which this firmware's USB couldn't sustain).
-Sends until the Mac disconnects. The mic is
-only open while a Mac is connected. Standard library only.
+Serves the microphone stream to the Mac. Listens on 127.0.0.1:8739 (the Mac reaches it with `adb forward`,
+so the Car Thing never connects out). For each connection it runs arecord through ALSA's conversion layer
+(plughw) to send one mixed channel at 16 kHz, 16-bit: plenty for speech, and about 24x less data over USB
+than the raw 4-channel, 48 kHz, 32-bit stream, which this firmware's USB couldn't sustain. The mic is only
+open while a Mac is connected. Standard library only.
 """
 import socket
 import subprocess
