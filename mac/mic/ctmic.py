@@ -3,7 +3,9 @@
 
 Serves the raw microphone stream to the Mac. Listens on 127.0.0.1:8739 (the Mac reaches it with
 `adb forward`, so the Car Thing never connects out), and for each connection runs arecord in the mic's
-native format (4 channels, 48 kHz, S32_LE) and sends its output until the Mac disconnects. The mic is
+own conversion layer (plughw) to send one mixed channel at 16 kHz, 16-bit: plenty for speech, and about
+24x less data over USB than the raw 4-channel, 48 kHz, 32-bit stream (which this firmware's USB couldn't sustain).
+Sends until the Mac disconnects. The mic is
 only open while a Mac is connected. Standard library only.
 """
 import socket
@@ -11,7 +13,8 @@ import subprocess
 import time
 
 PORT = 8739
-CMD = ["arecord", "-q", "-D", "hw:0,0", "-c", "4", "-f", "S32_LE", "-r", "48000", "-t", "raw"]
+CMD = ["arecord", "-q", "-D", "plughw:0,0", "-c", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"]
+BYTES_PER_SEC = 16000 * 2
 
 
 def log(*a):
@@ -24,7 +27,7 @@ def serve(conn):
     sent = 0
     try:
         while True:
-            chunk = rec.stdout.read(16384)
+            chunk = rec.stdout.read(3200)  # 0.1 s
             if not chunk:
                 err = rec.stderr.read().decode("utf-8", "replace").strip()
                 log("arecord stopped" + (": " + err if err else ""))
@@ -37,7 +40,7 @@ def serve(conn):
         rec.kill()
         rec.wait()
         conn.close()
-        log("client gone after %.1f s of audio" % (sent / (48000 * 16)))
+        log("client gone after %.1f s of audio" % (sent / BYTES_PER_SEC))
 
 
 def main():

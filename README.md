@@ -140,7 +140,7 @@ bash mac/mic/install-mic.sh
 
 This needs [Homebrew](https://brew.sh). It installs two free tools, **BlackHole 2ch** (a virtual audio device that macOS lists as a microphone; it asks for your Mac password) and **sox** (mixes the four mics into one, filters out fan and heating rumble, and boosts the level), then starts a small background job. Then choose **System Settings › Sound › Input › BlackHole 2ch**.
 
-How it works: the installer adds a small service to the Car Thing (`ctmic`, in `/usr/share/carthing-mic/`) that records with `arecord` in the mic's native format (4 channels, 48 kHz, 32-bit), only while the Mac is connected. The Mac job reads it through `adb forward`, so the connection only ever goes from the Mac to the Car Thing. `restore.sh` removes the service. Too quiet or too loud? Change `CTMIC_GAIN` (in dB, default 24) in `~/Library/LaunchAgents/us.warkenthien.carthing-mic.plist` and run the installer again. Undo with `bash mac/mic/uninstall-mic.sh`.
+How it works: the installer adds a small service to the Car Thing (`ctmic`, in `/usr/share/carthing-mic/`) that records with `arecord`, only while the Mac is connected, and mixes the four mics down to one channel at 16 kHz, 16-bit before sending (plenty for speech; the full raw stream was more than this firmware's USB could sustain). The Mac job reads it through `adb forward`, so the connection only ever goes from the Mac to the Car Thing. `restore.sh` removes the service. Too quiet or too loud? Change `CTMIC_GAIN` (in dB, default 24) in `~/Library/LaunchAgents/us.warkenthien.carthing-mic.plist` and run the installer again. Undo with `bash mac/mic/uninstall-mic.sh`.
 
 ## Make the Radio guide your own
 
