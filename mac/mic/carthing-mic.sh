@@ -34,7 +34,12 @@ while true; do
     "$ADB" forward tcp:$LPORT tcp:8739 >/dev/null
     "$ADB" shell 'python3 /tmp/ctmic.py' &
     SERVER=$!
-    sleep 2
+    # Python takes a few seconds to start on the Car Thing. Wait until it's listening on port 8739
+    # (0x2223 in /proc/net/tcp, state 0A = listening), up to 15 seconds, before connecting.
+    for i in $(seq 1 15); do
+      sleep 1
+      "$ADB" shell 'grep -i ":2223 00000000:0000 0A" /proc/net/tcp' 2>/dev/null | grep -q 0A && break
+    done
     log "Car Thing found. Streaming its mic to \"$DEVICE\" (+$GAIN dB)."
     nc 127.0.0.1 $LPORT |
       "$SOX" -q -t raw -r 48000 -e signed -b 32 -c 4 - -t coreaudio "$DEVICE" \
