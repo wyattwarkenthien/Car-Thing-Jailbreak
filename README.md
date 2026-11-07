@@ -1,17 +1,21 @@
-# Car Thing → Desk Computer
+# Reviving the Spotify Car Thing
 
-Spotify bricked the Car Thing at the end of 2024. This repo turns a jailbroken one into a little desk computer: an iPhone-style **home screen** you drive with the dial, six original games, a **now-playing screen** for your iPhone, and a **speed-dial** that calls your favorite contacts. Everything runs on the Car Thing itself and installs (and uninstalls) from a Mac over USB.
+Spotify discontinued the Car Thing in 2022 and switched every unit off in late 2024. This repo turns a jailbroken one into a retro desk computer, styled like a green-screen 8-bit computer: a **home screen** you drive with the dial, a clock and calendar, **music controls** for your iPhone and Mac, a **speed-dial** for your favorite contacts, a **radio reference guide**, and **six original games**. Everything runs on the Car Thing itself and installs (and uninstalls) from a Mac over USB.
 
-![Home screen](docs/screenshots/01-home-screen.png)
+Read the full write-up at [warkenthien.us/projects/car-thing](https://warkenthien.us/projects/car-thing/).
+
+![Home screen](docs/screenshots/21-home-green.png)
 
 | | |
 |---|---|
-| ![Apex '82](docs/screenshots/05-apex82-race.png) | ![Westward 1848](docs/screenshots/02-westward-title.png) |
-| ![Music](docs/screenshots/06-music-now-playing.png) | ![Phone](docs/screenshots/07-phone-favorites.png) |
-| ![Foxglen](docs/screenshots/15-foxglen-meadow.png) | ![Foxglen title](docs/screenshots/14-foxglen-title.png) |
-| ![The Legend of Sting](docs/screenshots/18-sting-village.png) | ![Sting title](docs/screenshots/17-sting-title.png) |
-| ![Neon Trail](docs/screenshots/19-neon-trail.png) | ![Nova Strike](docs/screenshots/20-nova-strike.png) |
-| ![Home, page 2](docs/screenshots/16-home-page-2.png) | |
+| ![Home, page 2](docs/screenshots/22-home-green-page2.png) | ![Settings](docs/screenshots/26-settings-green.png) |
+| ![Music](docs/screenshots/23-music-green.png) | ![Phone](docs/screenshots/25-phone-green.png) |
+| ![Radio](docs/screenshots/24-radio-green.png) | ![Westward 1848](docs/screenshots/02-westward-title.png) |
+| ![Apex '82](docs/screenshots/05-apex82-race.png) | ![Foxglen](docs/screenshots/15-foxglen-meadow.png) |
+| ![The Legend of Sting](docs/screenshots/18-sting-village.png) | ![Neon Trail](docs/screenshots/19-neon-trail.png) |
+| ![Nova Strike](docs/screenshots/20-nova-strike.png) | |
+
+The names in the Phone screenshot are made-up stand-ins.
 
 ## What's included
 
@@ -199,7 +203,7 @@ This puts the original startup config back, which also removes the Bluetooth ser
 - Jailbreak: [Thing Labs](https://github.com/thinglabsoss) firmware and the Terbium flasher; the [Car Thing wiki](https://carthing.wiki/).
 - Fonts: VT323 by Peter Hull and Inter by Rasmus Andersson, both under the SIL Open Font License.
 - Westward 1848, Apex '82, Foxglen, The Legend of Sting, Neon Trail and Nova Strike are original games inspired by the classics. They aren't affiliated with or endorsed by the owners of those games, and all their art and writing is original.
-- Built by [Wyatt Warkenthien](https://warkenthien.us), with Claude as pair programmer.
+- Built by [Wyatt Warkenthien](https://warkenthien.us), with Claude as an engineering partner.
 
 ## License
 
