@@ -32,8 +32,9 @@ while true; do
     "$ADB" shell 'supervisorctl stop superbird >/dev/null 2>&1; killall arecord; pkill -f "/tmp/ctmi[c].py"' >/dev/null 2>&1
     "$ADB" push "$HERE/ctmic.py" /tmp/ctmic.py >/dev/null 2>&1
     "$ADB" forward tcp:$LPORT tcp:8739 >/dev/null
-    "$ADB" shell 'python3 /tmp/ctmic.py' &
-    SERVER=$!
+    # Start the server detached on the Car Thing. (Run in the background from a LaunchAgent, a plain
+    # `adb shell` sees no input and closes, which would kill the server.)
+    "$ADB" shell -n 'nohup python3 /tmp/ctmic.py >/tmp/ctmic.log 2>&1 </dev/null &' </dev/null >/dev/null 2>&1
     # Python takes a few seconds to start on the Car Thing. Wait until it's listening on port 8739
     # (0x2223 in /proc/net/tcp, state 0A = listening), up to 15 seconds, before connecting.
     for i in $(seq 1 15); do
@@ -41,10 +42,10 @@ while true; do
       "$ADB" shell 'grep -i ":2223 00000000:0000 0A" /proc/net/tcp' 2>/dev/null | grep -q 0A && break
     done
     log "Car Thing found. Streaming its mic to \"$DEVICE\" (+$GAIN dB)."
-    nc 127.0.0.1 $LPORT |
+    nc -d 127.0.0.1 $LPORT |   # -d: never read stdin (a LaunchAgent has none, and nc would quit at its end)
       "$SOX" -q -t raw -r 48000 -e signed -b 32 -c 4 - -t coreaudio "$DEVICE" \
         remix "$MIX" "$MIX" highpass 80 gain -l "$GAIN"
-    kill $SERVER 2>/dev/null
+    "$ADB" shell -n 'cat /tmp/ctmic.log 2>/dev/null; killall arecord 2>/dev/null' </dev/null 2>/dev/null | sed 's/^/    car thing: /'
     "$ADB" forward --remove tcp:$LPORT >/dev/null 2>&1
     log "Stream stopped (unplugged, rebooted or busy). Retrying."
   fi
