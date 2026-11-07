@@ -39,6 +39,7 @@ bash "$DIR/../../device/spotify-off.sh" || echo "    (Car Thing not plugged in; 
 echo "4/4 Starting the background job..."
 mkdir -p "$APP" "$HOME/Library/LaunchAgents"
 cp "$DIR/carthing-mic.sh" "$APP/carthing-mic.sh"
+cp "$DIR/ctmic.py" "$APP/ctmic.py"
 chmod 755 "$APP/carthing-mic.sh"
 cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
